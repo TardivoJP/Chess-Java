@@ -64,7 +64,7 @@ public class Board {
 
         // Assuming a simple rule where any move is valid for now
         // You can replace this with the specific rules for each piece
-        if (isValidMove(piece, fromRow, fromCol, toRow, toCol)) {
+        if (isValidMove(piece, piece.getSide(), fromRow, fromCol, toRow, toCol)) {
             toCell.setPiece(piece);
             fromCell.setPiece(null);
 
@@ -74,17 +74,12 @@ public class Board {
         }
     }
 
-    private boolean isValidMove(Piece piece, int fromRow, int fromCol, int toRow, int toCol) {
+    private boolean isValidMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol) {
 
         if(piece instanceof Pawn){
             Pawn pawn = (Pawn) piece;
 
-            if (pawn.getSide() == 'W') {
-                return isValidWhitePawnMove(pawn, fromRow, fromCol, toRow, toCol);
-            } else {
-                return isValidBlackPawnMove(pawn, fromRow, fromCol, toRow, toCol);
-            }
-
+            return isValidPawnMove(pawn, side, fromRow, fromCol, toRow, toCol);
         }
 
         if(piece instanceof Rook){
@@ -94,12 +89,13 @@ public class Board {
                 return false;
             }
 
-            if (rook.getSide() == 'W') {
-                return isValidWhiteRookMove(rook, fromRow, fromCol, toRow, toCol);
-            } else {
-                return isValidBlackRookMove(rook, fromRow, fromCol, toRow, toCol);
-            }
+            return isValidRookMove(rook, side, fromRow, fromCol, toRow, toCol);
+        }
 
+        if(piece instanceof Bishop){
+            Bishop bishop = (Bishop) piece;
+
+            return isValidBishopMove(bishop, side, fromRow, fromCol, toRow, toCol);
         }
 
         
@@ -108,7 +104,7 @@ public class Board {
         return true;
     }
 
-    private boolean isValidWhitePawnMove(Pawn pawn, int fromRow, int fromCol, int toRow, int toCol){
+    private boolean isValidPawnMove(Pawn pawn, char side, int fromRow, int fromCol, int toRow, int toCol){
         //Check for single move
         if(fromRow - toRow == 1){
 
@@ -138,7 +134,7 @@ public class Board {
                 if(getCell(toRow, toCol).getPiece() == null){
 
                     //Check for En Passant
-                    if(getCell(fromRow, toCol).getPiece() == null || !getCell(fromRow, toCol).getPiece().getLabel().equals("P") || getCell(fromRow, toCol).getPiece().getSide() == 'W'){
+                    if(getCell(fromRow, toCol).getPiece() == null || !getCell(fromRow, toCol).getPiece().getLabel().equals("P") || getCell(fromRow, toCol).getPiece().getSide() == side){
                         return false;
                     }else{
                         Pawn enemyPawn = (Pawn) getCell(fromRow, toCol).getPiece();
@@ -158,7 +154,7 @@ public class Board {
                         }
                     }
                 }else{
-                    if(getCell(toRow, toCol).getPiece().getSide() == 'W'){
+                    if(getCell(toRow, toCol).getPiece().getSide() == side){
                         return false;
                     }else{
                         if(pawn.isDoubleMoveLastTurn() == true){
@@ -196,94 +192,7 @@ public class Board {
         return false;
     }
 
-    private boolean isValidBlackPawnMove(Pawn pawn, int fromRow, int fromCol, int toRow, int toCol){
-        //Check for single move
-        if(toRow - fromRow == 1){
-
-            //Check forward move
-            if(toCol - fromCol == 0){
-                //Check if there's a piece in the way in forward move
-                if(getCell(toRow, toCol).getPiece() == null){
-
-                    if(pawn.isDoubleMoveLastTurn() == true){
-                        pawn.setDoubleMoveLastTurn(false);
-                    }
-
-                    if(!pawn.isMoved()){
-                        pawn.setMoved(true);
-                    }
-
-                    return true;
-                }else{
-                    return false;
-                }
-            }
-
-            //Check diagonal move
-            if(toCol - fromCol == 1 || fromCol - toCol == 1){
-
-                //Check if there's a piece to capture in diagonal move
-                if(getCell(toRow, toCol).getPiece() == null){
-
-                    //Check for En Passant
-                    if(getCell(fromRow, toCol).getPiece() == null || !getCell(fromRow, toCol).getPiece().getLabel().equals("P") || getCell(fromRow, toCol).getPiece().getSide() == 'B'){
-                        return false;
-                    }else{
-                        Pawn enemyPawn = (Pawn) getCell(fromRow, toCol).getPiece();
-                        if(enemyPawn.isDoubleMoveLastTurn()){
-
-                            if(pawn.isDoubleMoveLastTurn() == true){
-                                pawn.setDoubleMoveLastTurn(false);
-                            }
-
-                            if(!pawn.isMoved()){
-                                pawn.setMoved(true);
-                            }
-
-                            return true;
-                        }else{
-                            return false;
-                        }
-                    }
-                }else{
-                    if(getCell(toRow, toCol).getPiece().getSide() == 'B'){
-                        return false;
-                    }else{
-                        if(pawn.isDoubleMoveLastTurn() == true){
-                            pawn.setDoubleMoveLastTurn(false);
-                        }
-
-                        if(!pawn.isMoved()){
-                            pawn.setMoved(true);
-                        }
-
-                        return true;
-                    }
-                }
-            }
-        //Check for double move    
-        }else if(toRow - fromRow == 2){
-            if(!pawn.isMoved()){
-
-                //Check if there's a piece in the way in double move
-                if(getCell(toRow, toCol).getPiece() == null){
-                    pawn.setDoubleMoveLastTurn(true);
-                    return true;
-                }else{
-                    return false;
-                }
-
-            }else{
-                return false;
-            }
-        }else{
-            return false;
-        }
-
-        return false;
-    }
-
-    private boolean isValidWhiteRookMove(Rook rook, int fromRow, int fromCol, int toRow, int toCol){
+    private boolean isValidRookMove(Rook rook, char side, int fromRow, int fromCol, int toRow, int toCol){
         if(fromRow != toRow){
             if(fromRow > toRow){
                 
@@ -296,7 +205,7 @@ public class Board {
                 if(cells[toRow][toCol].getPiece() == null){
                     return true;
                 }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == 'W'){
+                    if(cells[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
                         return true;
@@ -314,7 +223,7 @@ public class Board {
                 if(cells[toRow][toCol].getPiece() == null){
                     return true;
                 }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == 'W'){
+                    if(cells[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
                         return true;
@@ -333,7 +242,7 @@ public class Board {
                 if(cells[toRow][toCol].getPiece() == null){
                     return true;
                 }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == 'W'){
+                    if(cells[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
                         return true;
@@ -351,7 +260,7 @@ public class Board {
                 if(cells[toRow][toCol].getPiece() == null){
                     return true;
                 }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == 'W'){
+                    if(cells[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
                         return true;
@@ -363,38 +272,62 @@ public class Board {
         return false;
     }
 
-    private boolean isValidBlackRookMove(Rook rook, int fromRow, int fromCol, int toRow, int toCol){
-        if(fromRow != toRow){
-            if(fromRow > toRow){
+    private boolean isValidBishopMove(Bishop bishop, char side, int fromRow, int fromCol, int toRow, int toCol){
+        if(toCol > fromCol){
+            if(toRow > fromRow){
+
+
+                if(toCol - fromCol != toRow - fromRow){
+                    return false;
+                }
+
+                int rowIterator = fromRow+1;
+                int colIterator = fromCol+1;
                 
-                for(int i=fromRow-1; i>toRow; i--){
-                    if(cells[i][fromCol].getPiece() != null){
+                while(rowIterator != toRow && colIterator != toCol){
+
+                    if(cells[rowIterator][colIterator].getPiece() != null){
                         return false;
                     }
+
+                    rowIterator++;
+                    colIterator++;
                 }
 
                 if(cells[toRow][toCol].getPiece() == null){
                     return true;
                 }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == 'B'){
+                    if(cells[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
                         return true;
                     }
                 }
 
-            }else if(toRow > fromRow){
 
-                for(int i=fromRow+1; i<toRow; i++){
-                    if(cells[i][fromCol].getPiece() != null){
+            }else if(fromRow > toRow){
+
+                if(toCol - fromCol != fromRow - toRow){
+                    return false;
+                }
+
+                int rowIterator = fromRow-1;
+                int colIterator = fromCol+1;
+                
+                while(rowIterator != toRow && colIterator != toCol){
+
+                    if(cells[rowIterator][colIterator].getPiece() != null){
                         return false;
                     }
+
+                    rowIterator--;
+                    colIterator++;
                 }
 
                 if(cells[toRow][toCol].getPiece() == null){
                     return true;
                 }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == 'B'){
+                    if(cells[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
                         return true;
@@ -402,41 +335,67 @@ public class Board {
                 }
 
             }
-        }else if(fromCol != toCol){
-            if(fromCol > toCol){
-                for(int i=fromCol-1; i>toCol; i--){
-                    if(cells[fromRow][i].getPiece() != null){
+        }else if(fromCol > toCol){
+            if(toRow > fromRow){
+
+
+                if(fromCol - toCol != toRow - fromRow){
+                    return false;
+                }
+
+                int rowIterator = fromRow+1;
+                int colIterator = fromCol-1;
+                
+                while(rowIterator != toRow && colIterator != toCol){
+
+                    if(cells[rowIterator][colIterator].getPiece() != null){
                         return false;
                     }
+
+                    rowIterator++;
+                    colIterator--;
                 }
 
                 if(cells[toRow][toCol].getPiece() == null){
                     return true;
                 }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == 'B'){
+                    if(cells[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
                         return true;
                     }
                 }
 
-            }else if(toCol > fromCol){
 
-                for(int i=fromCol+1; i<toCol; i++){
-                    if(cells[fromRow][i].getPiece() != null){
+            }else if(fromRow > toRow){
+
+                if(fromCol - toCol != fromRow - toRow){
+                    return false;
+                }
+
+                int rowIterator = fromRow-1;
+                int colIterator = fromCol-1;
+                
+                while(rowIterator != toRow && colIterator != toCol){
+
+                    if(cells[rowIterator][colIterator].getPiece() != null){
                         return false;
                     }
+
+                    rowIterator--;
+                    colIterator--;
                 }
 
                 if(cells[toRow][toCol].getPiece() == null){
                     return true;
                 }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == 'B'){
+                    if(cells[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
                         return true;
                     }
                 }
+
             }
         }
 
