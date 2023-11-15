@@ -79,7 +79,11 @@ public class Board {
         if(piece instanceof Pawn){
             Pawn pawn = (Pawn) piece;
 
-            return isValidPawnMove(pawn, side, fromRow, fromCol, toRow, toCol);
+            if (pawn.getSide() == 'W') {
+                return isValidWhitePawnMove(pawn, fromRow, fromCol, toRow, toCol);
+            } else {
+                return isValidBlackPawnMove(pawn, fromRow, fromCol, toRow, toCol);
+            }
         }
 
         if(piece instanceof Rook){
@@ -90,6 +94,12 @@ public class Board {
             }
 
             return isValidRookMove(rook, side, fromRow, fromCol, toRow, toCol);
+        }
+
+        if(piece instanceof Knight){
+            Knight knight = (Knight) piece;
+
+            return isValidKnightMove(knight, side, fromRow, fromCol, toRow, toCol);
         }
 
         if(piece instanceof Bishop){
@@ -104,7 +114,7 @@ public class Board {
         return true;
     }
 
-    private boolean isValidPawnMove(Pawn pawn, char side, int fromRow, int fromCol, int toRow, int toCol){
+    private boolean isValidWhitePawnMove(Pawn pawn, int fromRow, int fromCol, int toRow, int toCol){
         //Check for single move
         if(fromRow - toRow == 1){
 
@@ -134,7 +144,7 @@ public class Board {
                 if(getCell(toRow, toCol).getPiece() == null){
 
                     //Check for En Passant
-                    if(getCell(fromRow, toCol).getPiece() == null || !getCell(fromRow, toCol).getPiece().getLabel().equals("P") || getCell(fromRow, toCol).getPiece().getSide() == side){
+                    if(getCell(fromRow, toCol).getPiece() == null || !getCell(fromRow, toCol).getPiece().getLabel().equals("P") || getCell(fromRow, toCol).getPiece().getSide() == 'W'){
                         return false;
                     }else{
                         Pawn enemyPawn = (Pawn) getCell(fromRow, toCol).getPiece();
@@ -154,7 +164,7 @@ public class Board {
                         }
                     }
                 }else{
-                    if(getCell(toRow, toCol).getPiece().getSide() == side){
+                    if(getCell(toRow, toCol).getPiece().getSide() == 'W'){
                         return false;
                     }else{
                         if(pawn.isDoubleMoveLastTurn() == true){
@@ -176,6 +186,93 @@ public class Board {
                 //Check if there's a piece in the way in double move
                 if(getCell(toRow, toCol).getPiece() == null){
                     pawn.setMoved(true);
+                    pawn.setDoubleMoveLastTurn(true);
+                    return true;
+                }else{
+                    return false;
+                }
+
+            }else{
+                return false;
+            }
+        }else{
+            return false;
+        }
+
+        return false;
+    }
+
+    private boolean isValidBlackPawnMove(Pawn pawn, int fromRow, int fromCol, int toRow, int toCol){
+        //Check for single move
+        if(toRow - fromRow == 1){
+
+            //Check forward move
+            if(toCol - fromCol == 0){
+                //Check if there's a piece in the way in forward move
+                if(getCell(toRow, toCol).getPiece() == null){
+
+                    if(pawn.isDoubleMoveLastTurn() == true){
+                        pawn.setDoubleMoveLastTurn(false);
+                    }
+
+                    if(!pawn.isMoved()){
+                        pawn.setMoved(true);
+                    }
+
+                    return true;
+                }else{
+                    return false;
+                }
+            }
+
+            //Check diagonal move
+            if(toCol - fromCol == 1 || fromCol - toCol == 1){
+
+                //Check if there's a piece to capture in diagonal move
+                if(getCell(toRow, toCol).getPiece() == null){
+
+                    //Check for En Passant
+                    if(getCell(fromRow, toCol).getPiece() == null || !getCell(fromRow, toCol).getPiece().getLabel().equals("P") || getCell(fromRow, toCol).getPiece().getSide() == 'B'){
+                        return false;
+                    }else{
+                        Pawn enemyPawn = (Pawn) getCell(fromRow, toCol).getPiece();
+                        if(enemyPawn.isDoubleMoveLastTurn()){
+
+                            if(pawn.isDoubleMoveLastTurn() == true){
+                                pawn.setDoubleMoveLastTurn(false);
+                            }
+
+                            if(!pawn.isMoved()){
+                                pawn.setMoved(true);
+                            }
+
+                            return true;
+                        }else{
+                            return false;
+                        }
+                    }
+                }else{
+                    if(getCell(toRow, toCol).getPiece().getSide() == 'B'){
+                        return false;
+                    }else{
+                        if(pawn.isDoubleMoveLastTurn() == true){
+                            pawn.setDoubleMoveLastTurn(false);
+                        }
+
+                        if(!pawn.isMoved()){
+                            pawn.setMoved(true);
+                        }
+
+                        return true;
+                    }
+                }
+            }
+        //Check for double move    
+        }else if(toRow - fromRow == 2){
+            if(!pawn.isMoved()){
+
+                //Check if there's a piece in the way in double move
+                if(getCell(toRow, toCol).getPiece() == null){
                     pawn.setDoubleMoveLastTurn(true);
                     return true;
                 }else{
@@ -266,6 +363,36 @@ public class Board {
                         return true;
                     }
                 }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isValidKnightMove(Knight knight, char side, int fromRow, int fromCol, int toRow, int toCol){
+        if(toRow - fromRow == 2 || fromRow - toRow == 2){
+            if(toCol - fromCol == 1 || fromCol - toCol == 1){
+                if(getCell(toRow, toCol).getPiece() == null){
+                    return true;
+                }else if(getCell(toRow, toCol).getPiece().getSide() == side){
+                    return false;
+                }else{
+                    return true;
+                }
+            }else{
+                return false;
+            }
+        }else if(toCol - fromCol == 2 || fromCol - toCol == 2){
+            if(toRow - fromRow == 1 || fromRow - toRow == 1){
+                if(getCell(toRow, toCol).getPiece() == null){
+                    return true;
+                }else if(getCell(toRow, toCol).getPiece().getSide() == side){
+                    return false;
+                }else{
+                    return true;
+                }
+            }else{
+                return false;
             }
         }
 
