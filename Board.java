@@ -1,15 +1,29 @@
+import java.util.Scanner;
+
 public class Board {
     private Cell[][] cells;
+    private int[][] whiteAttackingSquares;
+    private int[][] blackAttackingSquares;
+    private boolean castle;
+    private boolean promotion;
+    private int castleFromRow;
+    private int castleFromCol;
+    private int castleToRow;
+    private int castleToCol;
 
     public Board() {
         cells = new Cell[8][8];
         initializeBoard();
+        this.castle = false;
+        this.promotion = false;
     }
 
     private void initializeBoard() {
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
                 cells[i][j] = new Cell();
+                whiteAttackingSquares[i][j] = 0;
+                blackAttackingSquares[i][j] = 0;
             }
         }
 
@@ -68,6 +82,14 @@ public class Board {
             toCell.setPiece(piece);
             fromCell.setPiece(null);
 
+            if(castle){
+                handleCastling();
+            }
+
+            if(promotion){
+                handlePromotion(toCell, piece.getSide());
+            }
+
             System.out.println("Move successful!");
         } else {
             System.out.println("Invalid move for the selected piece.");
@@ -80,20 +102,34 @@ public class Board {
             Pawn pawn = (Pawn) piece;
 
             if (pawn.getSide() == 'W') {
-                return isValidWhitePawnMove(pawn, fromRow, fromCol, toRow, toCol);
+                if(isValidWhitePawnMove(pawn, fromRow, fromCol, toRow, toCol)){
+                    if(toRow == 0){
+                        this.promotion = true;
+                    }
+
+                    return true;
+                }else{
+                    return false;
+                }
             } else {
-                return isValidBlackPawnMove(pawn, fromRow, fromCol, toRow, toCol);
+                if(isValidBlackPawnMove(pawn, fromRow, fromCol, toRow, toCol)){
+                    if(toRow == 7){
+                        this.promotion = true;
+                    }
+
+                    return true;
+                }else{
+                    return false;
+                }
             }
         }
 
         if(piece instanceof Rook){
-            Rook rook = (Rook) piece;
-
             if(fromRow != toRow && fromCol != toCol){
                 return false;
             }
 
-            return isValidRookMove(rook, side, fromRow, fromCol, toRow, toCol);
+            return isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol);
         }
 
         if(piece instanceof Knight){
@@ -103,15 +139,24 @@ public class Board {
         }
 
         if(piece instanceof Bishop){
-            Bishop bishop = (Bishop) piece;
-
-            return isValidBishopMove(bishop, side, fromRow, fromCol, toRow, toCol);
+            return isValidBishopMove(piece, side, fromRow, fromCol, toRow, toCol);
         }
 
+        if(piece instanceof Queen){
+            if(isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol) || isValidBishopMove(piece, side, fromRow, fromCol, toRow, toCol)){
+                return true;
+            }else{
+                return false;
+            }
+        }
+
+        if(piece instanceof King){
+            King king = (King) piece;
+
+            return isValidKingMove(king, side, fromRow, fromCol, toRow, toCol);
+        }
         
-        // Implement specific rules for each piece type
-        // For simplicity, assume any move is valid for now
-        return true;
+        return false;
     }
 
     private boolean isValidWhitePawnMove(Pawn pawn, int fromRow, int fromCol, int toRow, int toCol){
@@ -144,7 +189,7 @@ public class Board {
                 if(getCell(toRow, toCol).getPiece() == null){
 
                     //Check for En Passant
-                    if(getCell(fromRow, toCol).getPiece() == null || !getCell(fromRow, toCol).getPiece().getLabel().equals("P") || getCell(fromRow, toCol).getPiece().getSide() == 'W'){
+                    if(getCell(fromRow, toCol).getPiece() == null || !getCell(fromRow, toCol).getPiece().getLabel().equals("BP") || getCell(fromRow, toCol).getPiece().getSide() == 'W'){
                         return false;
                     }else{
                         Pawn enemyPawn = (Pawn) getCell(fromRow, toCol).getPiece();
@@ -232,7 +277,7 @@ public class Board {
                 if(getCell(toRow, toCol).getPiece() == null){
 
                     //Check for En Passant
-                    if(getCell(fromRow, toCol).getPiece() == null || !getCell(fromRow, toCol).getPiece().getLabel().equals("P") || getCell(fromRow, toCol).getPiece().getSide() == 'B'){
+                    if(getCell(fromRow, toCol).getPiece() == null || !getCell(fromRow, toCol).getPiece().getLabel().equals("WP") || getCell(fromRow, toCol).getPiece().getSide() == 'B'){
                         return false;
                     }else{
                         Pawn enemyPawn = (Pawn) getCell(fromRow, toCol).getPiece();
@@ -289,7 +334,7 @@ public class Board {
         return false;
     }
 
-    private boolean isValidRookMove(Rook rook, char side, int fromRow, int fromCol, int toRow, int toCol){
+    private boolean isValidRookMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol){
         if(fromRow != toRow){
             if(fromRow > toRow){
                 
@@ -300,11 +345,25 @@ public class Board {
                 }
 
                 if(cells[toRow][toCol].getPiece() == null){
+                    if(piece instanceof Rook){
+                        Rook rook = (Rook) piece;
+                        if(!rook.isMoved()){
+                            rook.setMoved(true);
+                        }
+                    }
+
                     return true;
                 }else{
                     if(cells[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
+                        if(piece instanceof Rook){
+                            Rook rook = (Rook) piece;
+                            if(!rook.isMoved()){
+                                rook.setMoved(true);
+                            }
+                        }
+
                         return true;
                     }
                 }
@@ -318,11 +377,25 @@ public class Board {
                 }
 
                 if(cells[toRow][toCol].getPiece() == null){
+                    if(piece instanceof Rook){
+                        Rook rook = (Rook) piece;
+                        if(!rook.isMoved()){
+                            rook.setMoved(true);
+                        }
+                    }
+
                     return true;
                 }else{
                     if(cells[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
+                        if(piece instanceof Rook){
+                            Rook rook = (Rook) piece;
+                            if(!rook.isMoved()){
+                                rook.setMoved(true);
+                            }
+                        }
+
                         return true;
                     }
                 }
@@ -337,11 +410,25 @@ public class Board {
                 }
 
                 if(cells[toRow][toCol].getPiece() == null){
+                    if(piece instanceof Rook){
+                        Rook rook = (Rook) piece;
+                        if(!rook.isMoved()){
+                            rook.setMoved(true);
+                        }
+                    }
+
                     return true;
                 }else{
                     if(cells[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
+                        if(piece instanceof Rook){
+                            Rook rook = (Rook) piece;
+                            if(!rook.isMoved()){
+                                rook.setMoved(true);
+                            }
+                        }
+
                         return true;
                     }
                 }
@@ -355,11 +442,25 @@ public class Board {
                 }
 
                 if(cells[toRow][toCol].getPiece() == null){
+                    if(piece instanceof Rook){
+                        Rook rook = (Rook) piece;
+                        if(!rook.isMoved()){
+                            rook.setMoved(true);
+                        }
+                    }
+
                     return true;
                 }else{
                     if(cells[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
+                        if(piece instanceof Rook){
+                            Rook rook = (Rook) piece;
+                            if(!rook.isMoved()){
+                                rook.setMoved(true);
+                            }
+                        }
+
                         return true;
                     }
                 }
@@ -399,7 +500,7 @@ public class Board {
         return false;
     }
 
-    private boolean isValidBishopMove(Bishop bishop, char side, int fromRow, int fromCol, int toRow, int toCol){
+    private boolean isValidBishopMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol){
         if(toCol > fromCol){
             if(toRow > fromRow){
 
@@ -527,6 +628,115 @@ public class Board {
         }
 
         return false;
+    }
+
+    private boolean isValidKingMove(King king, char side, int fromRow, int fromCol, int toRow, int toCol){
+        if(!king.isMoved()){
+            if(fromRow == toRow){
+                if(toCol - fromCol == 2){
+                    if(cells[fromRow][toCol].getPiece() == null && cells[fromRow][toCol-1].getPiece() == null){
+                        if(cells[fromRow][toCol+1].getPiece() instanceof Rook){
+                            Rook rightSideRook = (Rook) cells[fromRow][toCol+1].getPiece();
+                            if(!rightSideRook.isMoved()){
+                                king.setMoved(true);
+                                this.castleFromCol = toCol + 1;
+                                this.castleFromRow = fromRow;
+                                this.castleToCol = toCol - 1;
+                                this.castleToRow = fromRow;
+                                this.castle = true;
+
+                                return true;
+                            }else{
+                                return false;
+                            }
+                        }
+                    }
+                }else if(fromCol - toCol == 2){
+                    if(cells[fromRow][toCol].getPiece() == null && cells[fromRow][toCol+1].getPiece() == null && cells[fromRow][toCol-1].getPiece() == null){
+                        if(cells[fromRow][toCol-2].getPiece() instanceof Rook){
+                            Rook leftSideRook = (Rook) cells[fromRow][toCol-2].getPiece();
+                            if(!leftSideRook.isMoved()){
+                                king.setMoved(true);
+                                this.castleFromCol = toCol - 2;
+                                this.castleFromRow = fromRow;
+                                this.castleToCol = toCol + 1;
+                                this.castleToRow = fromRow;
+                                this.castle = true;
+
+                                return true;
+                            }else{
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        if(toCol - fromCol > 1 || fromCol - toCol > 1 || toRow - fromRow > 1 || fromRow - toRow > 1){
+            return false;
+        }else if(getCell(toRow, toCol).getPiece() == null){
+            if(!king.isMoved()){
+                king.setMoved(true);
+            }
+
+            return true;
+        }else if(getCell(toRow, toCol).getPiece().getSide() == side){
+            return false;
+        }else{
+            if(!king.isMoved()){
+                king.setMoved(true);
+            }
+
+            return true;
+        }
+    }
+
+    private void handleCastling(){
+        Cell castleFromCell = getCell(this.castleFromRow, this.castleFromCol);
+        Cell castleToCell = getCell(this.castleToRow, this.castleToCol);
+
+        Piece castleRook = castleFromCell.getPiece();
+
+        castleToCell.setPiece(castleRook);
+        castleFromCell.setPiece(null);
+        
+        this.castle = false;
+    }
+
+    private void handlePromotion(Cell cell, char side){
+        System.out.print((side == 'W') ? "White" : "Black");
+        System.out.println(" Pawn was promoted!");
+
+        int choice = 0;
+        //Can't close this Scanner otherwise it conflicts with the one in the Main class
+        Scanner s = new Scanner(System.in);
+        while(choice < 1 || choice > 4){
+            System.out.println("Input 1 for queen, 2 for rook, 3 for bishop and 4 for knight");
+            choice = s.nextInt();
+        }
+
+        switch(choice){
+            case 1:
+                cell.setPiece(new Queen(side));
+                break;
+            case 2:
+                cell.setPiece(new Rook(side));
+                break;
+            case 3:
+                cell.setPiece(new Bishop(side));
+                break;
+            case 4:
+                cell.setPiece(new Knight(side));
+                break;
+        }
+
+        this.promotion = false;
+    }
+
+    private void createAttackingGrid(char side){
+        
     }
 
     public void printCurrentBoard(){

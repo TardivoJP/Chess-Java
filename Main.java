@@ -7,6 +7,8 @@ public class Main{
         board.getCell(4, 3).setPiece(new Pawn('W'));
         board.getCell(7, 1).setPiece(new Rook('W')); */
 
+        board.getCell(1, 2).setPiece(new Pawn('W'));
+
         board.printCurrentBoard();
 
         Scanner scanner = new Scanner(System.in);

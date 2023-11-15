@@ -1,4 +1,5 @@
 public class King extends Piece {
+    private boolean moved;
     private boolean captured;
 
     public King(char side){
@@ -9,11 +10,20 @@ public class King extends Piece {
             setLabel("BK");
         }
         
+        this.moved = false;
         this.captured = false;
+    }
+
+    public boolean isMoved() {
+        return moved;
     }
 
     public boolean isCaptured() {
         return captured;
+    }
+
+    public void setMoved(boolean moved) {
+        this.moved = moved;
     }
 
     public void setCaptured(boolean captured) {
