@@ -5,6 +5,9 @@ public class Board {
     private int[][] whiteAttackingSquares;
     private int[][] blackAttackingSquares;
     private boolean turn;
+    private boolean enPassant;
+    private int enPassantRow;
+    private int enPassantCol;
     private boolean castle;
     private boolean promotion;
     private int castleFromRow;
@@ -38,6 +41,7 @@ public class Board {
         this.blackKingRow = 0;
         this.blackKingCol = 4;
         this.gameRunning = true;
+        this.enPassant = false;
         gameLoop();
     }
 
@@ -102,6 +106,15 @@ public class Board {
             boolean validMove = false;
 
             while(!validMove){
+                /* System.out.print("Enter the next move: ");
+                String nextMove = scanner.nextLine();
+
+                String[] fromAndTo = nextMove.split("->");
+                String[] fromValues = fromAndTo[0].split(",");
+                String[] toValues = fromAndTo[1].split(",");
+
+                validMove = move(Integer.parseInt(fromValues[0]), Integer.parseInt(fromValues[1]), Integer.parseInt(toValues[0]), Integer.parseInt(toValues[1])); */
+
                 System.out.print("Enter the row to move from: ");
                 int fromRow = scanner.nextInt();
 
@@ -186,6 +199,10 @@ public class Board {
             toCell.setPiece(piece);
             fromCell.setPiece(null);
 
+            if(enPassant){
+                handleEnPassant();
+            }
+
             if(castle){
                 handleCastling();
             }
@@ -195,8 +212,6 @@ public class Board {
             }
 
             createAttackingGrid(piece.getSide());
-
-            printCurrentBoard();
 
             System.out.println("Move successful!");
 
@@ -345,6 +360,10 @@ public class Board {
                                 pawn.setMoved(true);
                             }
 
+                            this.enPassant = true;
+                            this.enPassantRow = toRow + 1;
+                            this.enPassantCol = toCol;
+
                             return true;
                         }else{
                             return false;
@@ -432,6 +451,10 @@ public class Board {
                             if(!pawn.isMoved()){
                                 pawn.setMoved(true);
                             }
+
+                            this.enPassant = true;
+                            this.enPassantRow = toRow - 1;
+                            this.enPassantCol = toCol;
 
                             return true;
                         }else{
@@ -907,6 +930,12 @@ public class Board {
 
             return true;
         }
+    }
+
+    private void handleEnPassant(){
+        Cell capturedPawnCell = getCell(this.enPassantRow, this.enPassantCol);
+        capturedPawnCell.setPiece(null);
+        this.enPassant = false;
     }
 
     private void handleCastling(){
