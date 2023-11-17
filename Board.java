@@ -42,7 +42,7 @@ public class Board {
         this.blackKingCol = 4;
         this.gameRunning = true;
         this.enPassant = false;
-        gameLoop();
+        //gameLoop();
     }
 
     private void initializeBoard() {
@@ -91,6 +91,29 @@ public class Board {
         //cells[1][6].setPiece(null);
     }
 
+    public Cell[][] getCurrentBoardState() {
+        return cells;
+    }
+
+    public boolean sendMove(int fromRow, int fromCol, int toRow, int toCol){
+        boolean validMove = false;
+
+        validMove = move(fromRow, fromCol, toRow, toCol);
+
+        if(validMove){
+            /* if(this.turn){
+                printCurrentAtackGrid('B');
+            }else{
+                printCurrentAtackGrid('W');
+            } */
+
+            this.turn = !this.turn;
+            return true;
+        }else{
+            return false;
+        }
+    }
+
     private void gameLoop(){
         Scanner scanner = new Scanner(System.in);
 
@@ -129,6 +152,12 @@ public class Board {
 
                 validMove = move(fromRow, fromCol, toRow, toCol);
             }
+
+            /* if(this.turn){
+                printCurrentAtackGrid('B');
+            }else{
+                printCurrentAtackGrid('W');
+            } */
 
             this.turn = !this.turn;
         }
@@ -300,11 +329,7 @@ public class Board {
         }
 
         if(piece instanceof Queen){
-            if(isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol) || isValidBishopMove(piece, side, fromRow, fromCol, toRow, toCol)){
-                return true;
-            }else{
-                return false;
-            }
+            return isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol) || isValidBishopMove(piece, side, fromRow, fromCol, toRow, toCol);
         }
 
         if(piece instanceof King){
@@ -1019,6 +1044,7 @@ public class Board {
     private void checkPossibleMovements(Piece piece, char side, int row, int col){
         if(piece instanceof Pawn){
             Pawn pawn = (Pawn) piece;
+            boolean currentEnPassantState = this.enPassant;
             boolean currentMovedState = pawn.isMoved();
             boolean currentDoubleMoveLastTurnState = pawn.isDoubleMoveLastTurn();
 
@@ -1026,6 +1052,7 @@ public class Board {
 
             pawn.setMoved(currentMovedState);
             pawn.setDoubleMoveLastTurn(currentDoubleMoveLastTurnState);
+            this.enPassant = currentEnPassantState;
             return;
         }
 
@@ -1058,11 +1085,21 @@ public class Board {
 
         if(piece instanceof King){
             King king = (King) piece;
+            boolean currentCastleState = this.castle;
             boolean currentMovedState = king.isMoved();
+            int currentWhiteKingRow = this.whiteKingRow;
+            int currentWhiteKingCol = this.whiteKingCol;
+            int currentBlackKingRow = this.blackKingRow;
+            int currentBlackKingCol = this.blackKingCol;
 
             possibleKingMovements(king, side, row, col);
 
             king.setMoved(currentMovedState);
+            this.castle = currentCastleState;
+            this.whiteKingRow = currentWhiteKingRow;
+            this.whiteKingCol = currentWhiteKingCol;
+            this.blackKingRow = currentBlackKingRow;
+            this.blackKingCol = currentBlackKingCol;
             return;
         }
     }
@@ -1504,6 +1541,7 @@ public class Board {
     private void checkPossibleMovementsCopy(Piece piece, char side, int row, int col, Cell[][] copyReference){
         if(piece instanceof Pawn){
             Pawn pawn = (Pawn) piece;
+            boolean currentEnPassantState = this.enPassant;
             boolean currentMovedState = pawn.isMoved();
             boolean currentDoubleMoveLastTurnState = pawn.isDoubleMoveLastTurn();
 
@@ -1511,6 +1549,7 @@ public class Board {
 
             pawn.setMoved(currentMovedState);
             pawn.setDoubleMoveLastTurn(currentDoubleMoveLastTurnState);
+            this.enPassant = currentEnPassantState;
             return;
         }
 
@@ -1543,11 +1582,21 @@ public class Board {
 
         if(piece instanceof King){
             King king = (King) piece;
+            boolean currentCastleState = this.castle;
             boolean currentMovedState = king.isMoved();
+            int currentWhiteKingRow = this.whiteKingRow;
+            int currentWhiteKingCol = this.whiteKingCol;
+            int currentBlackKingRow = this.blackKingRow;
+            int currentBlackKingCol = this.blackKingCol;
 
             possibleKingMovementsCopy(king, side, row, col, copyReference);
 
             king.setMoved(currentMovedState);
+            this.castle = currentCastleState;
+            this.whiteKingRow = currentWhiteKingRow;
+            this.whiteKingCol = currentWhiteKingCol;
+            this.blackKingRow = currentBlackKingRow;
+            this.blackKingCol = currentBlackKingCol;
             return;
         }
     }
