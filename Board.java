@@ -4,7 +4,6 @@ public class Board {
     private Cell[][] cells;
     private int[][] whiteAttackingSquares;
     private int[][] blackAttackingSquares;
-    private boolean turn;
     private boolean enPassant;
     private int enPassantRow;
     private int enPassantCol;
@@ -23,13 +22,15 @@ public class Board {
     private int blackKingRow;
     private int blackKingCol;
     private boolean gameRunning;
+    private enum Turn {WHITE, BLACK}
+    private Turn currentTurn;
 
     public Board() {
         cells = new Cell[8][8];
         this.whiteAttackingSquares = new int[8][8];
         this.blackAttackingSquares = new int[8][8];
         initializeBoard();
-        this.turn = false;
+        currentTurn = Turn.WHITE;
         this.castle = false;
         this.promotion = false;
         this.whiteKingChecked = false;
@@ -85,10 +86,6 @@ public class Board {
         //Kings
         cells[0][4].setPiece(new King('B'));
         cells[7][4].setPiece(new King('W'));
-
-        //cells[4][6].setPiece(new Queen('W'));
-        //cells[1][5].setPiece(null);
-        //cells[1][6].setPiece(null);
     }
 
     public Cell[][] getCurrentBoardState() {
@@ -101,13 +98,12 @@ public class Board {
         validMove = move(fromRow, fromCol, toRow, toCol);
 
         if(validMove){
-            /* if(this.turn){
-                printCurrentAtackGrid('B');
+            if(currentTurn == Turn.WHITE){
+                currentTurn = Turn.BLACK;
             }else{
-                printCurrentAtackGrid('W');
-            } */
+                currentTurn = Turn.WHITE;
+            }
 
-            this.turn = !this.turn;
             return true;
         }else{
             return false;
@@ -120,10 +116,10 @@ public class Board {
         while(this.gameRunning){
             printCurrentBoard();
 
-            if(this.turn){
-                System.out.println("Black to move.");
-            }else{
+            if(currentTurn == Turn.WHITE){
                 System.out.println("White to move.");
+            }else{
+                System.out.println("Black to move.");
             }
 
             boolean validMove = false;
@@ -153,13 +149,11 @@ public class Board {
                 validMove = move(fromRow, fromCol, toRow, toCol);
             }
 
-            /* if(this.turn){
-                printCurrentAtackGrid('B');
+            if(currentTurn == Turn.WHITE){
+                currentTurn = Turn.BLACK;
             }else{
-                printCurrentAtackGrid('W');
-            } */
-
-            this.turn = !this.turn;
+                currentTurn = Turn.WHITE;
+            }
         }
         
         scanner.close();
@@ -171,8 +165,8 @@ public class Board {
             return false;
         }
 
-        Cell fromCell = getCell(fromRow, fromCol);
-        Cell toCell = getCell(toRow, toCol);
+        Cell fromCell = this.cells[fromRow][fromCol];
+        Cell toCell = this.cells[toRow][toCol];
 
         if (fromCell.getPiece() == null) {
             System.out.println("There is no piece in the selected cell.");
@@ -181,10 +175,10 @@ public class Board {
 
         Piece piece = fromCell.getPiece();
 
-        if(!this.turn && piece.getSide() == 'B'){
+        if(currentTurn == Turn.WHITE && piece.getSide() == 'B'){
             System.out.println("Invalid piece, this is white's turn.");
             return false;
-        }else if(this.turn && piece.getSide() == 'W'){
+        }else if(currentTurn == Turn.BLACK && piece.getSide() == 'W'){
             System.out.println("Invalid piece, this is black's turn.");
             return false;
         }
@@ -194,29 +188,21 @@ public class Board {
         int currentBlackKingRow = this.blackKingRow;
         int currentBlackKingCol = this.blackKingCol;
 
-        if (isValidMove(piece, piece.getSide(), fromRow, fromCol, toRow, toCol)) {
-            if(this.turn && this.blackKingChecked){
-                if(!moveGetsOutofCheck(piece, piece.getSide(), fromRow, fromCol, toRow, toCol, currentBlackKingRow, currentBlackKingCol)){
+        if(isValidMove(piece, piece.getSide(), fromRow, fromCol, toRow, toCol, this.cells)){
+            if(currentTurn == Turn.BLACK && this.blackKingChecked){
+                if(!moveGetsOutofCheck(piece, piece.getSide(), fromRow, fromCol, toRow, toCol, currentBlackKingRow, currentBlackKingCol, this.cells)){
                     this.blackKingRow = currentBlackKingRow;
                     this.blackKingCol = currentBlackKingCol;
-
-                    if(castle){
-                        this.castle = false;
-                    }
 
                     System.out.println("Invalid move for the selected piece. Remember, you are in check!");
                     return false;
                 }else{
                     this.blackKingChecked = false;
                 }
-            }else if(!this.turn && this.whiteKingChecked){
-                if(!moveGetsOutofCheck(piece, piece.getSide(), fromRow, fromCol, toRow, toCol, currentWhiteKingRow, currentWhiteKingCol)){
+            }else if(currentTurn == Turn.WHITE && this.whiteKingChecked){
+                if(!moveGetsOutofCheck(piece, piece.getSide(), fromRow, fromCol, toRow, toCol, currentWhiteKingRow, currentWhiteKingCol, this.cells)){
                     this.whiteKingRow = currentWhiteKingRow;
                     this.whiteKingCol = currentWhiteKingCol;
-
-                    if(castle){
-                        this.castle = false;
-                    }
 
                     System.out.println("Invalid move for the selected piece. Remember, you are in check!");
                     return false;
@@ -229,18 +215,18 @@ public class Board {
             fromCell.setPiece(null);
 
             if(enPassant){
-                handleEnPassant();
+                handleEnPassant(this.cells);
             }
 
             if(castle){
-                handleCastling();
+                handleCastling(this.cells);
             }
 
             if(promotion){
                 handlePromotion(toCell, piece.getSide());
             }
 
-            createAttackingGrid(piece.getSide());
+            createAttackingGrid(piece.getSide(), this.cells);
 
             System.out.println("Move successful!");
 
@@ -249,7 +235,7 @@ public class Board {
                     this.blackKingChecked = true;
                     System.out.println("Black king checked!");
 
-                    if(!anyMovesLeft('B')){
+                    if(!anyMovesLeft('B', this.cells)){
                         this.blackKingMated = true;
                         System.out.println("Check mate!");
                     }
@@ -259,7 +245,7 @@ public class Board {
                     this.whiteKingChecked = true;
                     System.out.println("White king checked!");
 
-                    if(!anyMovesLeft('W')){
+                    if(!anyMovesLeft('W', this.cells)){
                         this.whiteKingMated = true;
                         System.out.println("Check mate!");
                     }
@@ -275,38 +261,23 @@ public class Board {
             }
 
             return true;
-
-        } else {
+        }else{
             System.out.println("Invalid move for the selected piece.");
             return false;
         }
     }
 
-    private boolean isValidMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol) {
-
+    private boolean isValidMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference) {
         if(piece instanceof Pawn){
             Pawn pawn = (Pawn) piece;
 
-            if (pawn.getSide() == 'W') {
-                if(isValidWhitePawnMove(pawn, fromRow, fromCol, toRow, toCol)){
-                    if(toRow == 0){
-                        this.promotion = true;
-                    }
-
-                    return true;
-                }else{
-                    return false;
+            if(isValidPawnMove(pawn, side, fromRow, fromCol, toRow, toCol, boardStateReference)){
+                if((pawn.getSide() == 'W' && toRow == 0) || (pawn.getSide() == 'B' && toRow == 7)){
+                    this.promotion = true;
                 }
-            } else {
-                if(isValidBlackPawnMove(pawn, fromRow, fromCol, toRow, toCol)){
-                    if(toRow == 7){
-                        this.promotion = true;
-                    }
-
-                    return true;
-                }else{
-                    return false;
-                }
+                return true;
+            }else{
+                return false;
             }
         }
 
@@ -315,519 +286,310 @@ public class Board {
                 return false;
             }
 
-            return isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol);
+            return isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference);
         }
 
         if(piece instanceof Knight){
             Knight knight = (Knight) piece;
 
-            return isValidKnightMove(knight, side, fromRow, fromCol, toRow, toCol);
+            return isValidKnightMove(knight, side, fromRow, fromCol, toRow, toCol, boardStateReference);
         }
 
         if(piece instanceof Bishop){
-            return isValidBishopMove(piece, side, fromRow, fromCol, toRow, toCol);
+            return isValidBishopMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference);
         }
 
         if(piece instanceof Queen){
-            return isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol) || isValidBishopMove(piece, side, fromRow, fromCol, toRow, toCol);
+            return isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference) || isValidBishopMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference);
         }
 
         if(piece instanceof King){
             King king = (King) piece;
 
-            return isValidKingMove(king, side, fromRow, fromCol, toRow, toCol);
+            return isValidKingMove(king, side, fromRow, fromCol, toRow, toCol, boardStateReference);
         }
         
         return false;
     }
 
-    private boolean isValidWhitePawnMove(Pawn pawn, int fromRow, int fromCol, int toRow, int toCol){
+    private boolean isValidPawnMove(Pawn pawn, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference){
         //Check for single move
-        if(fromRow - toRow == 1){
-
+        if((side == 'W' && fromRow - toRow == 1) || (side == 'B' && toRow - fromRow == 1)){
             //Check forward move
             if(toCol - fromCol == 0){
                 //Check if there's a piece in the way in forward move
-                if(getCell(toRow, toCol).getPiece() == null){
-
+                if(boardStateReference[toRow][toCol].getPiece() == null){
                     if(pawn.isDoubleMoveLastTurn() == true){
                         pawn.setDoubleMoveLastTurn(false);
                     }
-
                     if(!pawn.isMoved()){
                         pawn.setMoved(true);
                     }
-
                     return true;
                 }else{
                     return false;
                 }
             }
-
             //Check diagonal move
             if(toCol - fromCol == 1 || fromCol - toCol == 1){
-
                 //Check if there's a piece to capture in diagonal move
-                if(getCell(toRow, toCol).getPiece() == null){
-
+                if(boardStateReference[toRow][toCol].getPiece() == null){
                     //Check for En Passant
-                    if(getCell(fromRow, toCol).getPiece() == null || !getCell(fromRow, toCol).getPiece().getLabel().equals("BP") || getCell(fromRow, toCol).getPiece().getSide() == 'W'){
+                    if(boardStateReference[fromRow][toCol].getPiece() == null ||
+                    !(boardStateReference[fromRow][toCol].getPiece() instanceof Pawn) ||
+                    (side == 'W' && boardStateReference[fromRow][toCol].getPiece().getSide() == 'W') ||
+                    (side == 'B' && boardStateReference[fromRow][toCol].getPiece().getSide() == 'B')){
                         return false;
                     }else{
-                        Pawn enemyPawn = (Pawn) getCell(fromRow, toCol).getPiece();
+                        Pawn enemyPawn = (Pawn) boardStateReference[fromRow][toCol].getPiece();
                         if(enemyPawn.isDoubleMoveLastTurn()){
-
                             if(pawn.isDoubleMoveLastTurn() == true){
                                 pawn.setDoubleMoveLastTurn(false);
                             }
-
                             if(!pawn.isMoved()){
                                 pawn.setMoved(true);
                             }
-
                             this.enPassant = true;
-                            this.enPassantRow = toRow + 1;
+                            if(side == 'W'){
+                                this.enPassantRow = toRow + 1;
+                            }else{
+                                this.enPassantRow = toRow - 1;
+                            }
                             this.enPassantCol = toCol;
-
                             return true;
                         }else{
                             return false;
                         }
                     }
                 }else{
-                    if(getCell(toRow, toCol).getPiece().getSide() == 'W'){
+                    if(boardStateReference[toRow][toCol].getPiece().getSide() == side){
                         return false;
                     }else{
                         if(pawn.isDoubleMoveLastTurn() == true){
                             pawn.setDoubleMoveLastTurn(false);
                         }
-
                         if(!pawn.isMoved()){
                             pawn.setMoved(true);
                         }
-
                         return true;
                     }
                 }
             }
         //Check for double move    
-        }else if(fromRow - toRow == 2){
+        }else if((side == 'W' && fromRow - toRow == 2) || (side == 'B' && toRow - fromRow == 2)){
             if(!pawn.isMoved()){
-
                 //Check if there's a piece in the way in double move
-                if(getCell(toRow, toCol).getPiece() == null){
+                if(boardStateReference[toRow][toCol].getPiece() == null){
                     pawn.setMoved(true);
                     pawn.setDoubleMoveLastTurn(true);
                     return true;
                 }else{
                     return false;
                 }
-
             }else{
                 return false;
             }
         }else{
             return false;
         }
-
         return false;
     }
 
-    private boolean isValidBlackPawnMove(Pawn pawn, int fromRow, int fromCol, int toRow, int toCol){
-        //Check for single move
-        if(toRow - fromRow == 1){
-
-            //Check forward move
-            if(toCol - fromCol == 0){
-                //Check if there's a piece in the way in forward move
-                if(getCell(toRow, toCol).getPiece() == null){
-
-                    if(pawn.isDoubleMoveLastTurn() == true){
-                        pawn.setDoubleMoveLastTurn(false);
-                    }
-
-                    if(!pawn.isMoved()){
-                        pawn.setMoved(true);
-                    }
-
-                    return true;
-                }else{
-                    return false;
-                }
-            }
-
-            //Check diagonal move
-            if(toCol - fromCol == 1 || fromCol - toCol == 1){
-
-                //Check if there's a piece to capture in diagonal move
-                if(getCell(toRow, toCol).getPiece() == null){
-
-                    //Check for En Passant
-                    if(getCell(fromRow, toCol).getPiece() == null || !getCell(fromRow, toCol).getPiece().getLabel().equals("WP") || getCell(fromRow, toCol).getPiece().getSide() == 'B'){
-                        return false;
-                    }else{
-                        Pawn enemyPawn = (Pawn) getCell(fromRow, toCol).getPiece();
-                        if(enemyPawn.isDoubleMoveLastTurn()){
-
-                            if(pawn.isDoubleMoveLastTurn() == true){
-                                pawn.setDoubleMoveLastTurn(false);
-                            }
-
-                            if(!pawn.isMoved()){
-                                pawn.setMoved(true);
-                            }
-
-                            this.enPassant = true;
-                            this.enPassantRow = toRow - 1;
-                            this.enPassantCol = toCol;
-
-                            return true;
-                        }else{
-                            return false;
-                        }
-                    }
-                }else{
-                    if(getCell(toRow, toCol).getPiece().getSide() == 'B'){
-                        return false;
-                    }else{
-                        if(pawn.isDoubleMoveLastTurn() == true){
-                            pawn.setDoubleMoveLastTurn(false);
-                        }
-
-                        if(!pawn.isMoved()){
-                            pawn.setMoved(true);
-                        }
-
-                        return true;
-                    }
-                }
-            }
-        //Check for double move    
-        }else if(toRow - fromRow == 2){
-            if(!pawn.isMoved()){
-
-                //Check if there's a piece in the way in double move
-                if(getCell(toRow, toCol).getPiece() == null){
-                    pawn.setDoubleMoveLastTurn(true);
-                    return true;
-                }else{
-                    return false;
-                }
-
-            }else{
-                return false;
-            }
-        }else{
+    private boolean isValidRookMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference){
+        //Check if target square is empty or has a friendly piece
+        if(boardStateReference[toRow][toCol].getPiece() != null &&
+        boardStateReference[toRow][toCol].getPiece().getSide() == side){
             return false;
         }
 
-        return false;
-    }
+        //Rook move is only valid if it was performed either on its row or column
+        //If it's both then it's invalid
+        if(fromRow != toRow && fromCol != toCol){
+            return false;
+        }
 
-    private boolean isValidRookMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol){
-        if(fromRow != toRow){
-            if(fromRow > toRow){
-                
-                for(int i=fromRow-1; i>toRow; i--){
-                    if(cells[i][fromCol].getPiece() != null){
-                        return false;
-                    }
-                }
+        //Set looping parameters based on row or column move
+        int delta;
+        int start;
+        int end;
 
-                if(cells[toRow][toCol].getPiece() == null){
-                    if(piece instanceof Rook){
-                        Rook rook = (Rook) piece;
-                        if(!rook.isMoved()){
-                            rook.setMoved(true);
-                        }
-                    }
-
-                    return true;
-                }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        if(piece instanceof Rook){
-                            Rook rook = (Rook) piece;
-                            if(!rook.isMoved()){
-                                rook.setMoved(true);
-                            }
-                        }
-
-                        return true;
-                    }
-                }
-
-            }else if(toRow > fromRow){
-
-                for(int i=fromRow+1; i<toRow; i++){
-                    if(cells[i][fromCol].getPiece() != null){
-                        return false;
-                    }
-                }
-
-                if(cells[toRow][toCol].getPiece() == null){
-                    if(piece instanceof Rook){
-                        Rook rook = (Rook) piece;
-                        if(!rook.isMoved()){
-                            rook.setMoved(true);
-                        }
-                    }
-
-                    return true;
-                }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        if(piece instanceof Rook){
-                            Rook rook = (Rook) piece;
-                            if(!rook.isMoved()){
-                                rook.setMoved(true);
-                            }
-                        }
-
-                        return true;
-                    }
-                }
-
-            }
-        }else if(fromCol != toCol){
+        //Check for column move
+        if(fromRow == toRow){
+            //Check upwards move
             if(fromCol > toCol){
-                for(int i=fromCol-1; i>toCol; i--){
-                    if(cells[fromRow][i].getPiece() != null){
-                        return false;
-                    }
-                }
-
-                if(cells[toRow][toCol].getPiece() == null){
-                    if(piece instanceof Rook){
-                        Rook rook = (Rook) piece;
-                        if(!rook.isMoved()){
-                            rook.setMoved(true);
-                        }
-                    }
-
-                    return true;
-                }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        if(piece instanceof Rook){
-                            Rook rook = (Rook) piece;
-                            if(!rook.isMoved()){
-                                rook.setMoved(true);
-                            }
-                        }
-
-                        return true;
-                    }
-                }
-
-            }else if(toCol > fromCol){
-
-                for(int i=fromCol+1; i<toCol; i++){
-                    if(cells[fromRow][i].getPiece() != null){
-                        return false;
-                    }
-                }
-
-                if(cells[toRow][toCol].getPiece() == null){
-                    if(piece instanceof Rook){
-                        Rook rook = (Rook) piece;
-                        if(!rook.isMoved()){
-                            rook.setMoved(true);
-                        }
-                    }
-
-                    return true;
-                }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        if(piece instanceof Rook){
-                            Rook rook = (Rook) piece;
-                            if(!rook.isMoved()){
-                                rook.setMoved(true);
-                            }
-                        }
-
-                        return true;
-                    }
-                }
+                delta = -1;
+            //Check downwards move
+            }else{
+                delta = 1;
             }
+            start = fromCol + delta;
+            end = toCol;
+        //Check for row move
+        }else{
+            //Check leftwards move
+            if(fromRow > toRow){
+                delta = -1;
+            //Check rightwards move
+            }else{
+                delta = 1;
+            }
+            start = fromRow + delta;
+            end = toRow;
         }
 
-        return false;
-    }
-
-    private boolean isValidKnightMove(Knight knight, char side, int fromRow, int fromCol, int toRow, int toCol){
-        if(toRow - fromRow == 2 || fromRow - toRow == 2){
-            if(toCol - fromCol == 1 || fromCol - toCol == 1){
-                if(cells[toRow][toCol].getPiece() == null){
-                    return true;
-                }else if(cells[toRow][toCol].getPiece().getSide() == side){
-                    return false;
-                }else{
-                    return true;
-                }
-            }else{
-                return false;
-            }
-        }else if(toCol - fromCol == 2 || fromCol - toCol == 2){
-            if(toRow - fromRow == 1 || fromRow - toRow == 1){
-                if(cells[toRow][toCol].getPiece() == null){
-                    return true;
-                }else if(cells[toRow][toCol].getPiece().getSide() == side){
-                    return false;
-                }else{
-                    return true;
-                }
-            }else{
+        //Check if squares in the way of move are empty
+        for(int i = start; i != end; i += delta){
+            if((fromCol != toCol && boardStateReference[fromRow][i].getPiece() != null) ||
+            (fromRow != toRow && boardStateReference[i][fromCol].getPiece() != null)) {
                 return false;
             }
         }
 
+        //Check if it's a Rook to change its moved boolean which affects castling
+        //This check is done because the Queen also uses this function
+        if(piece instanceof Rook){
+            Rook rook = (Rook) piece;
+            if(!rook.isMoved()){
+                rook.setMoved(true);
+            }
+        }
+        return true;
+    }
+
+    private boolean isValidKnightMove(Knight knight, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference){
+        //Check squares difference in target move
+        int rowDifference = Math.abs(toRow - fromRow);
+        int colDifference = Math.abs(toCol - fromCol);
+
+        //Check if move was perfomed in the "L" or "2 - 1" fashion
+        if((rowDifference == 1 && colDifference == 2) || (rowDifference == 2 && colDifference == 1)){
+            //Check if target square is empty or has an opposing piece
+            if(boardStateReference[toRow][toCol].getPiece() == null || 
+            boardStateReference[toRow][toCol].getPiece().getSide() != side){
+                return true;
+            }
+        }
         return false;
     }
 
-    private boolean isValidBishopMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol){
+    private boolean isValidBishopMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference){
+        //Check left direction moves
         if(toCol > fromCol){
+            //Check left-down moves
             if(toRow > fromRow){
-
-
+                //Check if it was truly a diagonal move
                 if(toCol - fromCol != toRow - fromRow){
                     return false;
                 }
-
+                //Check if squares in the way of move are empty
                 int rowIterator = fromRow+1;
                 int colIterator = fromCol+1;
-                
                 while(rowIterator != toRow && colIterator != toCol){
-
-                    if(cells[rowIterator][colIterator].getPiece() != null){
+                    if(boardStateReference[rowIterator][colIterator].getPiece() != null){
                         return false;
                     }
-
                     rowIterator++;
                     colIterator++;
                 }
-
-                if(cells[toRow][toCol].getPiece() == null){
+                //Check if target square is empty or has an opposing piece
+                if(boardStateReference[toRow][toCol].getPiece() == null || 
+                boardStateReference[toRow][toCol].getPiece().getSide() != side){
                     return true;
                 }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        return true;
-                    }
+                    return false;
                 }
-
-
+            //Check left-up moves
             }else if(fromRow > toRow){
-
+                //Check if it was truly a diagonal move
                 if(toCol - fromCol != fromRow - toRow){
                     return false;
                 }
-
+                //Check if squares in the way of move are empty
                 int rowIterator = fromRow-1;
                 int colIterator = fromCol+1;
-                
                 while(rowIterator != toRow && colIterator != toCol){
-
-                    if(cells[rowIterator][colIterator].getPiece() != null){
+                    if(boardStateReference[rowIterator][colIterator].getPiece() != null){
                         return false;
                     }
-
                     rowIterator--;
                     colIterator++;
                 }
-
-                if(cells[toRow][toCol].getPiece() == null){
+                //Check if target square is empty or has an opposing piece
+                if(boardStateReference[toRow][toCol].getPiece() == null || 
+                boardStateReference[toRow][toCol].getPiece().getSide() != side){
                     return true;
                 }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        return true;
-                    }
+                    return false;
                 }
-
             }
+        //Check right direction moves
         }else if(fromCol > toCol){
+            //Check right-down moves
             if(toRow > fromRow){
-
-
+                //Check if it was truly a diagonal move
                 if(fromCol - toCol != toRow - fromRow){
                     return false;
                 }
-
+                //Check if squares in the way of move are empty
                 int rowIterator = fromRow+1;
                 int colIterator = fromCol-1;
-                
                 while(rowIterator != toRow && colIterator != toCol){
-
-                    if(cells[rowIterator][colIterator].getPiece() != null){
+                    if(boardStateReference[rowIterator][colIterator].getPiece() != null){
                         return false;
                     }
-
                     rowIterator++;
                     colIterator--;
                 }
-
-                if(cells[toRow][toCol].getPiece() == null){
+                //Check if target square is empty or has an opposing piece
+                if(boardStateReference[toRow][toCol].getPiece() == null || 
+                boardStateReference[toRow][toCol].getPiece().getSide() != side){
                     return true;
                 }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        return true;
-                    }
+                    return false;
                 }
-
-
+            //Check right-up moves
             }else if(fromRow > toRow){
-
+                //Check if it was truly a diagonal move
                 if(fromCol - toCol != fromRow - toRow){
                     return false;
                 }
-
+                //Check if squares in the way of move are empty
                 int rowIterator = fromRow-1;
                 int colIterator = fromCol-1;
-                
                 while(rowIterator != toRow && colIterator != toCol){
-
-                    if(cells[rowIterator][colIterator].getPiece() != null){
+                    if(boardStateReference[rowIterator][colIterator].getPiece() != null){
                         return false;
                     }
-
                     rowIterator--;
                     colIterator--;
                 }
-
-                if(cells[toRow][toCol].getPiece() == null){
+                //Check if target square is empty or has an opposing piece
+                if(boardStateReference[toRow][toCol].getPiece() == null || 
+                boardStateReference[toRow][toCol].getPiece().getSide() != side){
                     return true;
                 }else{
-                    if(cells[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        return true;
-                    }
+                    return false;
                 }
-
             }
         }
-
         return false;
     }
 
-    private boolean isValidKingMove(King king, char side, int fromRow, int fromCol, int toRow, int toCol){
+    private boolean isValidKingMove(King king, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference){
+        //Check for castling
         if(!king.isMoved()){
+            //Check if the move is within the same row
             if(fromRow == toRow){
+                //Check for King side castling
                 if(toCol - fromCol == 2){
+                    //Check King's color performing the castle move, in this case White
                     if(side == 'W'){
-                        if(cells[fromRow][toCol].getPiece() == null && cells[fromRow][toCol-1].getPiece() == null && this.blackAttackingSquares[fromRow][toCol] == 0 && this.blackAttackingSquares[fromRow][toCol-1] == 0){
-                            if(cells[fromRow][toCol+1].getPiece() instanceof Rook){
-                                Rook rightSideRook = (Rook) cells[fromRow][toCol+1].getPiece();
+                        //Check if the squares in the way are empty and aren't being attacked by opposing pieces
+                        if(boardStateReference[fromRow][toCol].getPiece() == null && boardStateReference[fromRow][toCol-1].getPiece() == null && this.blackAttackingSquares[fromRow][toCol] == 0 && this.blackAttackingSquares[fromRow][toCol-1] == 0){
+                            //Check if the rightmost piece is actually a Rook
+                            if(boardStateReference[fromRow][toCol+1].getPiece() instanceof Rook){
+                                //Check if that rook hasn't moved yet
+                                Rook rightSideRook = (Rook) boardStateReference[fromRow][toCol+1].getPiece();
                                 if(!rightSideRook.isMoved()){
                                     king.setMoved(true);
                                     this.castleFromCol = toCol + 1;
@@ -844,10 +606,14 @@ public class Board {
                                 }
                             }
                         }
+                    //Check King's color performing the castle move, in this case Black
                     }else{
-                        if(cells[fromRow][toCol].getPiece() == null && cells[fromRow][toCol-1].getPiece() == null && this.whiteAttackingSquares[fromRow][toCol] == 0 && this.whiteAttackingSquares[fromRow][toCol-1] == 0){
-                            if(cells[fromRow][toCol+1].getPiece() instanceof Rook){
-                                Rook rightSideRook = (Rook) cells[fromRow][toCol+1].getPiece();
+                        //Check if the squares in the way are empty and aren't being attacked by opposing pieces
+                        if(boardStateReference[fromRow][toCol].getPiece() == null && boardStateReference[fromRow][toCol-1].getPiece() == null && this.whiteAttackingSquares[fromRow][toCol] == 0 && this.whiteAttackingSquares[fromRow][toCol-1] == 0){
+                            //Check if the rightmost piece is actually a Rook
+                            if(boardStateReference[fromRow][toCol+1].getPiece() instanceof Rook){
+                                //Check if that rook hasn't moved yet
+                                Rook rightSideRook = (Rook) boardStateReference[fromRow][toCol+1].getPiece();
                                 if(!rightSideRook.isMoved()){
                                     king.setMoved(true);
                                     this.castleFromCol = toCol + 1;
@@ -865,11 +631,16 @@ public class Board {
                             }
                         }
                     }
+                //Check for Queen side castling
                 }else if(fromCol - toCol == 2){
+                    //Check King's color performing the castle move, in this case White
                     if(side == 'W'){
-                        if(cells[fromRow][toCol].getPiece() == null && cells[fromRow][toCol+1].getPiece() == null && cells[fromRow][toCol-1].getPiece() == null && this.blackAttackingSquares[fromRow][toCol] == 0 && this.blackAttackingSquares[fromRow][toCol+1] == 0 && this.blackAttackingSquares[fromRow][toCol-1] == 0){
-                            if(cells[fromRow][toCol-2].getPiece() instanceof Rook){
-                                Rook leftSideRook = (Rook) cells[fromRow][toCol-2].getPiece();
+                        //Check if the squares in the way are empty and aren't being attacked by opposing pieces, since this is Queen side, there's an additional square to check
+                        if(boardStateReference[fromRow][toCol].getPiece() == null && boardStateReference[fromRow][toCol+1].getPiece() == null && boardStateReference[fromRow][toCol-1].getPiece() == null && this.blackAttackingSquares[fromRow][toCol] == 0 && this.blackAttackingSquares[fromRow][toCol+1] == 0 && this.blackAttackingSquares[fromRow][toCol-1] == 0){
+                            //Check if the leftmost piece is actually a Rook
+                            if(boardStateReference[fromRow][toCol-2].getPiece() instanceof Rook){
+                                //Check if that rook hasn't moved yet
+                                Rook leftSideRook = (Rook) boardStateReference[fromRow][toCol-2].getPiece();
                                 if(!leftSideRook.isMoved()){
                                     king.setMoved(true);
                                     this.castleFromCol = toCol - 2;
@@ -886,10 +657,14 @@ public class Board {
                                 }
                             }
                         }
+                    //Check King's color performing the castle move, in this case Black
                     }else{
-                        if(cells[fromRow][toCol].getPiece() == null && cells[fromRow][toCol+1].getPiece() == null && cells[fromRow][toCol-1].getPiece() == null && this.whiteAttackingSquares[fromRow][toCol] == 0 && this.whiteAttackingSquares[fromRow][toCol+1] == 0 && this.whiteAttackingSquares[fromRow][toCol-1] == 0){
-                            if(cells[fromRow][toCol-2].getPiece() instanceof Rook){
-                                Rook leftSideRook = (Rook) cells[fromRow][toCol-2].getPiece();
+                        //Check if the squares in the way are empty and aren't being attacked by opposing pieces, since this is Queen side, there's an additional square to check
+                        if(boardStateReference[fromRow][toCol].getPiece() == null && boardStateReference[fromRow][toCol+1].getPiece() == null && boardStateReference[fromRow][toCol-1].getPiece() == null && this.whiteAttackingSquares[fromRow][toCol] == 0 && this.whiteAttackingSquares[fromRow][toCol+1] == 0 && this.whiteAttackingSquares[fromRow][toCol-1] == 0){
+                            //Check if the leftmost piece is actually a Rook
+                            if(boardStateReference[fromRow][toCol-2].getPiece() instanceof Rook){
+                                //Check if that rook hasn't moved yet
+                                Rook leftSideRook = (Rook) boardStateReference[fromRow][toCol-2].getPiece();
                                 if(!leftSideRook.isMoved()){
                                     king.setMoved(true);
                                     this.castleFromCol = toCol - 2;
@@ -911,11 +686,15 @@ public class Board {
             }
         }
 
-
-        if(toCol - fromCol > 1 || fromCol - toCol > 1 || toRow - fromRow > 1 || fromRow - toRow > 1){
+        //Check for regular King moves
+        //Check if King moved more than one square in any direction
+        if(Math.abs(toCol - fromCol) > 1 || Math.abs(toRow - fromRow) > 1){
             return false;
-        }else if(getCell(toRow, toCol).getPiece() == null){
+        //Check if target square is empty
+        }else if(boardStateReference[toRow][toCol].getPiece() == null){
+            //Check King's color performing the move, in this case White
             if(side == 'W'){
+                //Check if that square isn't attacked by an opposing piece
                 if(this.blackAttackingSquares[toRow][toCol] == 0){
                     if(!king.isMoved()){
                         king.setMoved(true);
@@ -926,7 +705,9 @@ public class Board {
                 }else{
                     return false;
                 }
+            //Check King's color performing the move, in this case Black
             }else{
+                //Check if that square isn't attacked by an opposing piece
                 if(this.whiteAttackingSquares[toRow][toCol] == 0){
                     if(!king.isMoved()){
                         king.setMoved(true);
@@ -938,51 +719,55 @@ public class Board {
                     return false;
                 }
             }
-        }else if(getCell(toRow, toCol).getPiece().getSide() == side){
+        //Check if square isn't occupied by friendly piece
+        }else if(boardStateReference[toRow][toCol].getPiece().getSide() == side){
             return false;
+        //Check edge case where King captures an opposing piece
         }else{
-            if(!king.isMoved()){
-                king.setMoved(true);
-            }
+            int currentKingRow;
+            int currentKingCol;
 
             if(side == 'W'){
-                this.whiteKingRow = toRow;
-                this.whiteKingCol = toCol;
+                currentKingRow = this.whiteKingRow;
+                currentKingCol = this.whiteKingCol;
             }else{
-                this.blackKingRow = toRow;
-                this.blackKingCol = toCol;
+                currentKingRow = this.blackKingRow;
+                currentKingCol = this.blackKingCol;
             }
-
-            return true;
+            //If the capture is safe, then it's allowed and actually performed
+            if(moveGetsOutofCheck(king, side, fromRow, fromCol, toRow, toCol, currentKingRow, currentKingCol, boardStateReference)){
+                if(!king.isMoved()){
+                    king.setMoved(true);
+                }
+                if(side == 'W'){
+                    this.whiteKingRow = toRow;
+                    this.whiteKingCol = toCol;
+                }else{
+                    this.blackKingRow = toRow;
+                    this.blackKingCol = toCol;
+                }
+    
+                return true;
+            }else{
+                return false;
+            }
         }
     }
 
-    private void handleEnPassant(){
-        Cell capturedPawnCell = getCell(this.enPassantRow, this.enPassantCol);
+    private void handleEnPassant(Cell[][] boardStateReference){
+        Cell capturedPawnCell = boardStateReference[this.enPassantRow][this.enPassantCol];
         capturedPawnCell.setPiece(null);
         this.enPassant = false;
     }
 
-    private void handleCastling(){
-        Cell castleFromCell = getCell(this.castleFromRow, this.castleFromCol);
-        Cell castleToCell = getCell(this.castleToRow, this.castleToCol);
-
+    private void handleCastling(Cell[][] boardStateReference){
+        Cell castleFromCell = boardStateReference[this.castleFromRow][this.castleFromCol];
+        Cell castleToCell = boardStateReference[this.castleToRow][this.castleToCol];
         Piece castleRook = castleFromCell.getPiece();
 
         castleToCell.setPiece(castleRook);
         castleFromCell.setPiece(null);
-        
         this.castle = false;
-    }
-
-    private void testPossibleCastling(Cell[][] possibleState){
-        Cell castleFromCell = possibleState[this.castleFromRow][this.castleFromCol];
-        Cell castleToCell = possibleState[this.castleToRow][this.castleToCol];
-
-        Piece castleRook = castleFromCell.getPiece();
-
-        castleToCell.setPiece(castleRook);
-        castleFromCell.setPiece(null);
     }
 
     private void handlePromotion(Cell cell, char side){
@@ -1016,8 +801,8 @@ public class Board {
     }
 
     private void clearAttackingGrid(char side){
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
+        for(int i=0; i<8; i++){
+            for(int j=0; j<8; j++){
                 if(side == 'W'){
                     this.whiteAttackingSquares[i][j] = 0;
                 }else{
@@ -1027,28 +812,27 @@ public class Board {
         }
     }
 
-    private void createAttackingGrid(char side){
+    private void createAttackingGrid(char side, Cell[][] boardStateReference){
         clearAttackingGrid(side);
-
         for(int i=0; i<8; i++){
             for(int j=0; j<8; j++){
-                if(cells[i][j].getPiece() != null){
-                    if(cells[i][j].getPiece().getSide() == side){
-                        checkPossibleMovements(cells[i][j].getPiece(), side, i, j);
+                if(boardStateReference[i][j].getPiece() != null){
+                    if(boardStateReference[i][j].getPiece().getSide() == side){
+                        checkPossibleMovements(boardStateReference[i][j].getPiece(), side, i, j, boardStateReference);
                     }
                 }
             }
         }
     }
 
-    private void checkPossibleMovements(Piece piece, char side, int row, int col){
+    private void checkPossibleMovements(Piece piece, char side, int row, int col, Cell[][] boardStateReference){
         if(piece instanceof Pawn){
             Pawn pawn = (Pawn) piece;
             boolean currentEnPassantState = this.enPassant;
             boolean currentMovedState = pawn.isMoved();
             boolean currentDoubleMoveLastTurnState = pawn.isDoubleMoveLastTurn();
 
-            possiblePawnMovements(pawn, side, row, col);
+            possiblePawnMovements(pawn, side, row, col, boardStateReference);
 
             pawn.setMoved(currentMovedState);
             pawn.setDoubleMoveLastTurn(currentDoubleMoveLastTurnState);
@@ -1060,7 +844,7 @@ public class Board {
             Rook rook = (Rook) piece;
             boolean currentMovedState = rook.isMoved();
 
-            possibleRookMovements(piece, side, row, col);
+            possibleRookMovements(piece, side, row, col, boardStateReference);
 
             rook.setMoved(currentMovedState);
             return;
@@ -1068,18 +852,18 @@ public class Board {
 
         if(piece instanceof Knight){
             Knight knight = (Knight) piece;
-            possibleKnightMovements(knight, side, row, col);
+            possibleKnightMovements(knight, side, row, col, boardStateReference);
             return;
         }
 
         if(piece instanceof Bishop){
-            possibleBishopMovements(piece, side, row, col);
+            possibleBishopMovements(piece, side, row, col, boardStateReference);
             return;
         }
 
         if(piece instanceof Queen){
-            possibleRookMovements(piece, side, row, col);
-            possibleBishopMovements(piece, side, row, col);
+            possibleRookMovements(piece, side, row, col, boardStateReference);
+            possibleBishopMovements(piece, side, row, col, boardStateReference);
             return;
         }
 
@@ -1092,7 +876,7 @@ public class Board {
             int currentBlackKingRow = this.blackKingRow;
             int currentBlackKingCol = this.blackKingCol;
 
-            possibleKingMovements(king, side, row, col);
+            possibleKingMovements(king, side, row, col, boardStateReference);
 
             king.setMoved(currentMovedState);
             this.castle = currentCastleState;
@@ -1104,90 +888,28 @@ public class Board {
         }
     }
 
-    private void possiblePawnMovements(Pawn pawn, char side, int row, int col){
+    private void possiblePawnMovements(Pawn pawn, char side, int row, int col, Cell[][] boardStateReference){
+        int delta;
         if(side == 'W'){
-            int[] possibleWhiteRows = {row - 2, row - 1, row - 1, row - 1};
-            int[] possibleWhiteCols = {col, col, col - 1, col + 1};
-
-            if(!pawn.isMoved()){
-                if(isValidCoordinate(possibleWhiteRows[0], possibleWhiteCols[0])){
-                    if(isValidWhitePawnMove(pawn, row, col, possibleWhiteRows[0], possibleWhiteCols[0])){
-                        this.whiteAttackingSquares[possibleWhiteRows[0]][possibleWhiteCols[0]] = 1;
-                    }
-                }
-            }
-
-            for(int i=1; i<possibleWhiteRows.length; i++){
-                for(int j=1; j<possibleWhiteCols.length; j++){
-                    if(isValidCoordinate(possibleWhiteRows[i], possibleWhiteCols[j])){
-                        if(isValidWhitePawnMove(pawn, row, col, possibleWhiteRows[i], possibleWhiteCols[j])){
-                            this.whiteAttackingSquares[possibleWhiteRows[i]][possibleWhiteCols[j]] = 1;
-                        }
-                    }
-                }
-            }
+            delta = -1;
         }else{
-            int[] possibleBlackRows = {row + 2, row + 1, row + 1, row + 1};
-            int[] possibleBlackCols = {col, col, col - 1, col + 1};
-
-            if(!pawn.isMoved()){
-                if(isValidCoordinate(possibleBlackRows[0], possibleBlackCols[0])){
-                    if(isValidBlackPawnMove(pawn, row, col, possibleBlackRows[0], possibleBlackCols[0])){
-                        this.blackAttackingSquares[possibleBlackRows[0]][possibleBlackCols[0]] = 1;
-                    }
-                }
-            }
-
-            for(int i=1; i<possibleBlackRows.length; i++){
-                for(int j=1; j<possibleBlackCols.length; j++){
-                    if(isValidCoordinate(possibleBlackRows[i], possibleBlackCols[j])){
-                        if(isValidBlackPawnMove(pawn, row, col, possibleBlackRows[i], possibleBlackCols[j])){
-                            this.blackAttackingSquares[possibleBlackRows[i]][possibleBlackCols[j]] = 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private void possibleRookMovements(Piece piece, char side, int row, int col){
-        for(int i=0; i<8; i++){
-            if(i != row){
-                if(isValidCoordinate(i, col)){
-                    if(isValidRookMove(piece, side, row, col, i, col)){
-                        if(side == 'W'){
-                            this.whiteAttackingSquares[i][col] = 1;
-                        }else{
-                            this.blackAttackingSquares[i][col] = 1;
-                        }
-                    }
-                }
-            }
+            delta = 1;
         }
 
-        for(int i=0; i<8; i++){
-            if(i != col){
-                if(isValidCoordinate(row, i)){
-                    if(isValidRookMove(piece, side, row, col, row, i)){
-                        if(side == 'W'){
-                            this.whiteAttackingSquares[row][i] = 1;
-                        }else{
-                            this.blackAttackingSquares[row][i] = 1;
-                        }
-                    }
-                }
-            }
-        } 
-    }
+        int[] possibleRows = {row + (delta * 2), row + delta, row + delta, row + delta};
+        int[] possibleCols = {col, col, col - 1, col + 1};
 
-    private void possibleKnightMovements(Knight knight, char side, int row, int col){
-        int[] possibleRows = {row + 2, row + 2, row - 2, row - 2, row + 1, row - 1, row + 1, row - 1};
-        int[] possibleCols = {col + 1, col - 1, col + 1, col - 1, col + 2, col + 2, col - 2, col - 2};
+        int start;
+        if(!pawn.isMoved()){
+            start = 0;
+        }else{
+            start = 1;
+        }
 
-        for(int i=0; i<possibleRows.length; i++){
-            for(int j=0; j<possibleCols.length; j++){
+        for(int i=start; i<possibleRows.length; i++){
+            for(int j=start; j<possibleCols.length; j++){
                 if(isValidCoordinate(possibleRows[i], possibleCols[j])){
-                    if(isValidKnightMove(knight, side, row, col, possibleRows[i], possibleCols[j])){
+                    if(isValidPawnMove(pawn, side, row, col, possibleRows[i], possibleCols[j], boardStateReference)){
                         if(side == 'W'){
                             this.whiteAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
                         }else{
@@ -1199,12 +921,59 @@ public class Board {
         }
     }
 
-    private void possibleBishopMovements(Piece piece, char side, int row, int col){
+    private void possibleRookMovements(Piece piece, char side, int row, int col, Cell[][] boardStateReference){
+        for(int i=0; i<8; i++){
+            if(i != row){
+                if(isValidCoordinate(i, col)){
+                    if(isValidRookMove(piece, side, row, col, i, col, boardStateReference)){
+                        if(side == 'W'){
+                            this.whiteAttackingSquares[i][col] = 1;
+                        }else{
+                            this.blackAttackingSquares[i][col] = 1;
+                        }
+                    }
+                }
+            }
+
+            if(i != col){
+                if(isValidCoordinate(row, i)){
+                    if(isValidRookMove(piece, side, row, col, row, i, boardStateReference)){
+                        if(side == 'W'){
+                            this.whiteAttackingSquares[row][i] = 1;
+                        }else{
+                            this.blackAttackingSquares[row][i] = 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void possibleKnightMovements(Knight knight, char side, int row, int col, Cell[][] boardStateReference){
+        int[] possibleRows = {row + 2, row + 2, row - 2, row - 2, row + 1, row - 1, row + 1, row - 1};
+        int[] possibleCols = {col + 1, col - 1, col + 1, col - 1, col + 2, col + 2, col - 2, col - 2};
+
+        for(int i=0; i<possibleRows.length; i++){
+            for(int j=0; j<possibleCols.length; j++){
+                if(isValidCoordinate(possibleRows[i], possibleCols[j])){
+                    if(isValidKnightMove(knight, side, row, col, possibleRows[i], possibleCols[j], boardStateReference)){
+                        if(side == 'W'){
+                            this.whiteAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
+                        }else{
+                            this.blackAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void possibleBishopMovements(Piece piece, char side, int row, int col, Cell[][] boardStateReference){
         int auxCol = col+1;
 
         for(int i=row+1; i<8; i++){
             if(isValidCoordinate(i, auxCol)){
-                if(isValidBishopMove(piece, side, row, col, i, auxCol)){
+                if(isValidBishopMove(piece, side, row, col, i, auxCol, boardStateReference)){
                     if(side == 'W'){
                         this.whiteAttackingSquares[i][auxCol] = 1;
                     }else{
@@ -1220,7 +989,7 @@ public class Board {
 
         for(int i=row-1; i>=0; i--){
             if(isValidCoordinate(i, auxCol)){
-                if(isValidBishopMove(piece, side, row, col, i, auxCol)){
+                if(isValidBishopMove(piece, side, row, col, i, auxCol, boardStateReference)){
                     if(side == 'W'){
                         this.whiteAttackingSquares[i][auxCol] = 1;
                     }else{
@@ -1235,7 +1004,7 @@ public class Board {
 
         for(int i=row+1; i<8; i++){
             if(isValidCoordinate(i, auxCol)){
-                if(isValidBishopMove(piece, side, row, col, i, auxCol)){
+                if(isValidBishopMove(piece, side, row, col, i, auxCol, boardStateReference)){
                     if(side == 'W'){
                         this.whiteAttackingSquares[i][auxCol] = 1;
                     }else{
@@ -1250,7 +1019,7 @@ public class Board {
 
         for(int i=row-1; i>=0; i--){
             if(isValidCoordinate(i, auxCol)){
-                if(isValidBishopMove(piece, side, row, col, i, auxCol)){
+                if(isValidBishopMove(piece, side, row, col, i, auxCol, boardStateReference)){
                     if(side == 'W'){
                         this.whiteAttackingSquares[i][auxCol] = 1;
                     }else{
@@ -1262,14 +1031,14 @@ public class Board {
         }
     }
 
-    private void possibleKingMovements(King king, char side, int row, int col){
+    private void possibleKingMovements(King king, char side, int row, int col, Cell[][] boardStateReference){
         int[] possibleRows = {row + 1, row + 1, row + 1, row - 1, row - 1, row - 1, row, row};
         int[] possibleCols = {col, col + 1, col - 1, col, col + 1, col - 1, col + 1, col - 1};
 
         for(int i=0; i<possibleRows.length; i++){
             for(int j=0; j<possibleCols.length; j++){
                 if(isValidCoordinate(possibleRows[i], possibleCols[j])){
-                    if(isValidKingMove(king, side, row, col, possibleRows[i], possibleCols[j])){
+                    if(isValidKingMove(king, side, row, col, possibleRows[i], possibleCols[j], boardStateReference)){
                         if(side == 'W'){
                             this.whiteAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
                         }else{
@@ -1281,7 +1050,7 @@ public class Board {
         }
     }
 
-    private boolean anyMovesLeft(char side){
+    private boolean anyMovesLeft(char side, Cell[][] boardStateReference){
         int[][] opposingAttacks;
         int[][] currentSideAttacks;
 
@@ -1298,9 +1067,9 @@ public class Board {
 
         for(int i=0; i<8; i++){
             for(int j=0; j<8; j++){
-                if(cells[i][j].getPiece() != null){
-                    if(cells[i][j].getPiece().getSide() == side){
-                        checkPossibleMovements(cells[i][j].getPiece(), side, i, j);
+                if(boardStateReference[i][j].getPiece() != null){
+                    if(boardStateReference[i][j].getPiece().getSide() == side){
+                        checkPossibleMovements(boardStateReference[i][j].getPiece(), side, i, j, boardStateReference);
 
                         for(int k=0; k<8; k++){
                             for(int l=0; l<8; l++){
@@ -1308,7 +1077,7 @@ public class Board {
                                 if(side == 'W'){
                                     if(this.whiteAttackingSquares[k][l] == 1){
 
-                                        Cell[][] copyState = copyBoardState(cells);
+                                        Cell[][] copyState = copyBoardState(boardStateReference);
 
                                         Cell possibleFromCell = copyState[i][j];
                                         Cell possibleToCell = copyState[k][l];
@@ -1323,7 +1092,7 @@ public class Board {
                                             for(int n=0; n<8; n++){
                                                 if(copyState[m][n].getPiece() != null){
                                                     if(copyState[m][n].getPiece().getSide() == 'B'){
-                                                        checkPossibleMovementsCopy(copyState[m][n].getPiece(), 'B', m, n, copyState);
+                                                        checkPossibleMovements(copyState[m][n].getPiece(), 'B', m, n, copyState);
                                                     }
                                                 }
                                             }
@@ -1354,7 +1123,7 @@ public class Board {
                                             for(int n=0; n<8; n++){
                                                 if(copyState[m][n].getPiece() != null){
                                                     if(copyState[m][n].getPiece().getSide() == 'W'){
-                                                        checkPossibleMovementsCopy(copyState[m][n].getPiece(), 'W', m, n, copyState);
+                                                        checkPossibleMovements(copyState[m][n].getPiece(), 'W', m, n, copyState);
                                                     }
                                                 }
                                             }
@@ -1393,13 +1162,13 @@ public class Board {
         return false;
     }
 
-    private boolean moveGetsOutofCheck(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, int previousKingRow, int previousKingCol){
+    private boolean moveGetsOutofCheck(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, int previousKingRow, int previousKingCol, Cell[][] boardStateReference){
         boolean result = false;
 
         int[][] whiteAttacksBackUp = this.whiteAttackingSquares;
         int[][] blackAttacksBackUp = this.blackAttackingSquares;
 
-        Cell[][] copyState = copyBoardState(cells);
+        Cell[][] copyState = copyBoardState(boardStateReference);
 
         Cell possibleFromCell = copyState[fromRow][fromCol];
         Cell possibleToCell = copyState[toRow][toCol];
@@ -1407,38 +1176,19 @@ public class Board {
         possibleToCell.setPiece(piece);
         possibleFromCell.setPiece(null);
 
-        if(castle){
-            testPossibleCastling(copyState);
+        if(previousKingRow == fromRow && previousKingCol == fromCol){
+            previousKingRow = toRow;
+            previousKingCol = toCol;
         }
 
         if(side == 'W'){
-            clearAttackingGrid('B');
-            for(int i=0; i<8; i++){
-                for(int j=0; j<8; j++){
-                    if(copyState[i][j].getPiece() != null){
-                        if(copyState[i][j].getPiece().getSide() == 'B'){
-                            checkPossibleMovementsCopy(copyState[i][j].getPiece(), 'B', i, j, copyState);
-                        }
-                    }
-                }
-            }
-
+            createAttackingGrid('B', copyState);
             if(this.blackAttackingSquares[previousKingRow][previousKingCol] == 0){
                 result = true;
             }
 
         }else{
-            clearAttackingGrid('W');
-            for(int i=0; i<8; i++){
-                for(int j=0; j<8; j++){
-                    if(copyState[i][j].getPiece() != null){
-                        if(copyState[i][j].getPiece().getSide() == 'W'){
-                            checkPossibleMovementsCopy(copyState[i][j].getPiece(), 'W', i, j, copyState);
-                        }
-                    }
-                }
-            }
-
+            createAttackingGrid('W', copyState);
             if(this.whiteAttackingSquares[previousKingRow][previousKingCol] == 0){
                 result = true;
             }
@@ -1452,39 +1202,38 @@ public class Board {
 
     private Cell[][] copyBoardState(Cell[][] originalBoard) {
         Cell[][] copyState = new Cell[8][8];
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
+        for(int i=0; i<8; i++){
+            for(int j=0; j<8; j++){
                 copyState[i][j] = new Cell();
-                if (originalBoard[i][j].getPiece() != null) {
+                if(originalBoard[i][j].getPiece() != null){
                     Piece originalPiece = originalBoard[i][j].getPiece();
                     char originalSide = originalPiece.getSide();
                     Piece copiedPiece;
 
                     // Check the type of the piece and create a new instance accordingly
-                    if (originalPiece instanceof Pawn) {
+                    if(originalPiece instanceof Pawn){
                         copiedPiece = new Pawn(originalSide);
-                        ((Pawn) copiedPiece).setMoved(((Pawn) originalPiece).isMoved());
-                        ((Pawn) copiedPiece).setDoubleMoveLastTurn(((Pawn) originalPiece).isDoubleMoveLastTurn());
-                    } else if (originalPiece instanceof King) {
+                        ((Pawn)copiedPiece).setMoved(((Pawn)originalPiece).isMoved());
+                        ((Pawn)copiedPiece).setDoubleMoveLastTurn(((Pawn) originalPiece).isDoubleMoveLastTurn());
+                    }else if(originalPiece instanceof King){
                         copiedPiece = new King(originalSide);
-                        ((King) copiedPiece).setMoved(((King) originalPiece).isMoved());
-                    } else if (originalPiece instanceof Rook) {
+                        ((King)copiedPiece).setMoved(((King)originalPiece).isMoved());
+                    }else if(originalPiece instanceof Rook){
                         copiedPiece = new Rook(originalSide);
-                        ((Rook) copiedPiece).setMoved(((Rook) originalPiece).isMoved());
-                    } else if (originalPiece instanceof Bishop){
+                        ((Rook)copiedPiece).setMoved(((Rook)originalPiece).isMoved());
+                    }else if(originalPiece instanceof Bishop){
                         copiedPiece = new Bishop(originalSide);
-                    } else if (originalPiece instanceof Knight){
+                    }else if(originalPiece instanceof Knight){
                         copiedPiece = new Knight(originalSide);
-                    } else if (originalPiece instanceof Queen){
+                    }else if(originalPiece instanceof Queen){
                         copiedPiece = new Queen(originalSide);
-                    } else{
+                    }else{
                         copiedPiece = new Piece();
                     }
     
                     // Copy common attributes
                     copiedPiece.setLabel(originalPiece.getLabel());
                     copiedPiece.setSide(originalPiece.getSide());
-    
                     copyState[i][j].setPiece(copiedPiece);
                 }
             }
@@ -1522,848 +1271,7 @@ public class Board {
         }
     }
 
-    public Cell getCell(int row, int col) {
-        // Check if the provided coordinates are within the bounds of the board
-        if (isValidCoordinate(row, col)) {
-            return cells[row][col];
-        } else {
-            // Handle invalid coordinates (you can throw an exception or return null)
-            throw new IllegalArgumentException("Invalid coordinates");
-        }
-    }
-
     private boolean isValidCoordinate(int row, int col) {
         return row >= 0 && row < 8 && col >= 0 && col < 8;
     }
-
-    //THE MESSED UP UNDERWORLD OF NEARLY IDENTICAL FUNCTIONS BECAUSE OF COPY AND REFERENCE SHENANIGANS
-    
-    private void checkPossibleMovementsCopy(Piece piece, char side, int row, int col, Cell[][] copyReference){
-        if(piece instanceof Pawn){
-            Pawn pawn = (Pawn) piece;
-            boolean currentEnPassantState = this.enPassant;
-            boolean currentMovedState = pawn.isMoved();
-            boolean currentDoubleMoveLastTurnState = pawn.isDoubleMoveLastTurn();
-
-            possiblePawnMovementsCopy(pawn, side, row, col, copyReference);
-
-            pawn.setMoved(currentMovedState);
-            pawn.setDoubleMoveLastTurn(currentDoubleMoveLastTurnState);
-            this.enPassant = currentEnPassantState;
-            return;
-        }
-
-        if(piece instanceof Rook){
-            Rook rook = (Rook) piece;
-            boolean currentMovedState = rook.isMoved();
-
-            possibleRookMovementsCopy(piece, side, row, col, copyReference);
-
-            rook.setMoved(currentMovedState);
-            return;
-        }
-
-        if(piece instanceof Knight){
-            Knight knight = (Knight) piece;
-            possibleKnightMovementsCopy(knight, side, row, col, copyReference);
-            return;
-        }
-
-        if(piece instanceof Bishop){
-            possibleBishopMovementsCopy(piece, side, row, col, copyReference);
-            return;
-        }
-
-        if(piece instanceof Queen){
-            possibleRookMovementsCopy(piece, side, row, col, copyReference);
-            possibleBishopMovementsCopy(piece, side, row, col, copyReference);
-            return;
-        }
-
-        if(piece instanceof King){
-            King king = (King) piece;
-            boolean currentCastleState = this.castle;
-            boolean currentMovedState = king.isMoved();
-            int currentWhiteKingRow = this.whiteKingRow;
-            int currentWhiteKingCol = this.whiteKingCol;
-            int currentBlackKingRow = this.blackKingRow;
-            int currentBlackKingCol = this.blackKingCol;
-
-            possibleKingMovementsCopy(king, side, row, col, copyReference);
-
-            king.setMoved(currentMovedState);
-            this.castle = currentCastleState;
-            this.whiteKingRow = currentWhiteKingRow;
-            this.whiteKingCol = currentWhiteKingCol;
-            this.blackKingRow = currentBlackKingRow;
-            this.blackKingCol = currentBlackKingCol;
-            return;
-        }
-    }
-
-    private void possiblePawnMovementsCopy(Pawn pawn, char side, int row, int col, Cell[][] copyReference){
-        if(side == 'W'){
-            int[] possibleWhiteRows = {row - 2, row - 1, row - 1, row - 1};
-            int[] possibleWhiteCols = {col, col, col - 1, col + 1};
-
-            if(!pawn.isMoved()){
-                if(isValidCoordinate(possibleWhiteRows[0], possibleWhiteCols[0])){
-                    if(isValidWhitePawnMoveCopy(pawn, row, col, possibleWhiteRows[0], possibleWhiteCols[0], copyReference)){
-                        this.whiteAttackingSquares[possibleWhiteRows[0]][possibleWhiteCols[0]] = 1;
-                    }
-                }
-            }
-
-            for(int i=1; i<possibleWhiteRows.length; i++){
-                for(int j=1; j<possibleWhiteCols.length; j++){
-                    if(isValidCoordinate(possibleWhiteRows[i], possibleWhiteCols[j])){
-                        if(isValidWhitePawnMoveCopy(pawn, row, col, possibleWhiteRows[i], possibleWhiteCols[j], copyReference)){
-                            this.whiteAttackingSquares[possibleWhiteRows[i]][possibleWhiteCols[j]] = 1;
-                        }
-                    }
-                }
-            }
-        }else{
-            int[] possibleBlackRows = {row + 2, row + 1, row + 1, row + 1};
-            int[] possibleBlackCols = {col, col, col - 1, col + 1};
-
-            if(!pawn.isMoved()){
-                if(isValidCoordinate(possibleBlackRows[0], possibleBlackCols[0])){
-                    if(isValidBlackPawnMoveCopy(pawn, row, col, possibleBlackRows[0], possibleBlackCols[0], copyReference)){
-                        this.blackAttackingSquares[possibleBlackRows[0]][possibleBlackCols[0]] = 1;
-                    }
-                }
-            }
-
-            for(int i=1; i<possibleBlackRows.length; i++){
-                for(int j=1; j<possibleBlackCols.length; j++){
-                    if(isValidCoordinate(possibleBlackRows[i], possibleBlackCols[j])){
-                        if(isValidBlackPawnMoveCopy(pawn, row, col, possibleBlackRows[i], possibleBlackCols[j], copyReference)){
-                            this.blackAttackingSquares[possibleBlackRows[i]][possibleBlackCols[j]] = 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    private boolean isValidWhitePawnMoveCopy(Pawn pawn, int fromRow, int fromCol, int toRow, int toCol, Cell[][] copyReference){
-        //Check for single move
-        if(fromRow - toRow == 1){
-
-            //Check forward move
-            if(toCol - fromCol == 0){
-                //Check if there's a piece in the way in forward move
-                if(copyReference[toRow][toCol].getPiece() == null){
-
-                    if(pawn.isDoubleMoveLastTurn() == true){
-                        pawn.setDoubleMoveLastTurn(false);
-                    }
-
-                    if(!pawn.isMoved()){
-                        pawn.setMoved(true);
-                    }
-
-                    return true;
-                }else{
-                    return false;
-                }
-            }
-
-            //Check diagonal move
-            if(toCol - fromCol == 1 || fromCol - toCol == 1){
-
-                //Check if there's a piece to capture in diagonal move
-                if(copyReference[toRow][toCol].getPiece() == null){
-
-                    //Check for En Passant
-                    if(copyReference[fromRow][toCol].getPiece() == null || !copyReference[fromRow][toCol].getPiece().getLabel().equals("BP") || copyReference[fromRow][toCol].getPiece().getSide() == 'W'){
-                        return false;
-                    }else{
-                        Pawn enemyPawn = (Pawn) copyReference[fromRow][toCol].getPiece();
-                        if(enemyPawn.isDoubleMoveLastTurn()){
-
-                            if(pawn.isDoubleMoveLastTurn() == true){
-                                pawn.setDoubleMoveLastTurn(false);
-                            }
-
-                            if(!pawn.isMoved()){
-                                pawn.setMoved(true);
-                            }
-
-                            return true;
-                        }else{
-                            return false;
-                        }
-                    }
-                }else{
-                    if(copyReference[toRow][toCol].getPiece().getSide() == 'W'){
-                        return false;
-                    }else{
-                        if(pawn.isDoubleMoveLastTurn() == true){
-                            pawn.setDoubleMoveLastTurn(false);
-                        }
-
-                        if(!pawn.isMoved()){
-                            pawn.setMoved(true);
-                        }
-
-                        return true;
-                    }
-                }
-            }
-        //Check for double move    
-        }else if(fromRow - toRow == 2){
-            if(!pawn.isMoved()){
-
-                //Check if there's a piece in the way in double move
-                if(copyReference[toRow][toCol].getPiece() == null){
-                    pawn.setMoved(true);
-                    pawn.setDoubleMoveLastTurn(true);
-                    return true;
-                }else{
-                    return false;
-                }
-
-            }else{
-                return false;
-            }
-        }else{
-            return false;
-        }
-
-        return false;
-    }
-
-    private boolean isValidBlackPawnMoveCopy(Pawn pawn, int fromRow, int fromCol, int toRow, int toCol, Cell[][] copyReference){
-        //Check for single move
-        if(toRow - fromRow == 1){
-
-            //Check forward move
-            if(toCol - fromCol == 0){
-                //Check if there's a piece in the way in forward move
-                if(copyReference[toRow][toCol].getPiece() == null){
-
-                    if(pawn.isDoubleMoveLastTurn() == true){
-                        pawn.setDoubleMoveLastTurn(false);
-                    }
-
-                    if(!pawn.isMoved()){
-                        pawn.setMoved(true);
-                    }
-
-                    return true;
-                }else{
-                    return false;
-                }
-            }
-
-            //Check diagonal move
-            if(toCol - fromCol == 1 || fromCol - toCol == 1){
-
-                //Check if there's a piece to capture in diagonal move
-                if(copyReference[toRow][toCol].getPiece() == null){
-
-                    //Check for En Passant
-                    if(copyReference[fromRow][toCol].getPiece() == null || !copyReference[fromRow][toCol].getPiece().getLabel().equals("WP") || copyReference[fromRow][toCol].getPiece().getSide() == 'B'){
-                        return false;
-                    }else{
-                        Pawn enemyPawn = (Pawn) copyReference[fromRow][toCol].getPiece();
-                        if(enemyPawn.isDoubleMoveLastTurn()){
-
-                            if(pawn.isDoubleMoveLastTurn() == true){
-                                pawn.setDoubleMoveLastTurn(false);
-                            }
-
-                            if(!pawn.isMoved()){
-                                pawn.setMoved(true);
-                            }
-
-                            return true;
-                        }else{
-                            return false;
-                        }
-                    }
-                }else{
-                    if(copyReference[toRow][toCol].getPiece().getSide() == 'B'){
-                        return false;
-                    }else{
-                        if(pawn.isDoubleMoveLastTurn() == true){
-                            pawn.setDoubleMoveLastTurn(false);
-                        }
-
-                        if(!pawn.isMoved()){
-                            pawn.setMoved(true);
-                        }
-
-                        return true;
-                    }
-                }
-            }
-        //Check for double move    
-        }else if(toRow - fromRow == 2){
-            if(!pawn.isMoved()){
-
-                //Check if there's a piece in the way in double move
-                if(copyReference[toRow][toCol].getPiece() == null){
-                    pawn.setDoubleMoveLastTurn(true);
-                    return true;
-                }else{
-                    return false;
-                }
-
-            }else{
-                return false;
-            }
-        }else{
-            return false;
-        }
-
-        return false;
-    }
-
-    private void possibleRookMovementsCopy(Piece piece, char side, int row, int col, Cell[][] copyReference){
-        for(int i=0; i<8; i++){
-            if(i != row){
-                if(isValidCoordinate(i, col)){
-                    if(isValidRookMoveCopy(piece, side, row, col, i, col, copyReference)){
-                        if(side == 'W'){
-                            this.whiteAttackingSquares[i][col] = 1;
-                        }else{
-                            this.blackAttackingSquares[i][col] = 1;
-                        }
-                    }
-                }
-            }
-        }
-
-        for(int i=0; i<8; i++){
-            if(i != col){
-                if(isValidCoordinate(row, i)){
-                    if(isValidRookMoveCopy(piece, side, row, col, row, i, copyReference)){
-                        if(side == 'W'){
-                            this.whiteAttackingSquares[row][i] = 1;
-                        }else{
-                            this.blackAttackingSquares[row][i] = 1;
-                        }
-                    }
-                }
-            }
-        } 
-    }
-
-    private boolean isValidRookMoveCopy(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] copyReference){
-        if(fromRow != toRow){
-            if(fromRow > toRow){
-                
-                for(int i=fromRow-1; i>toRow; i--){
-                    if(copyReference[i][fromCol].getPiece() != null){
-                        return false;
-                    }
-                }
-
-                if(copyReference[toRow][toCol].getPiece() == null){
-                    if(piece instanceof Rook){
-                        Rook rook = (Rook) piece;
-                        if(!rook.isMoved()){
-                            rook.setMoved(true);
-                        }
-                    }
-
-                    return true;
-                }else{
-                    if(copyReference[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        if(piece instanceof Rook){
-                            Rook rook = (Rook) piece;
-                            if(!rook.isMoved()){
-                                rook.setMoved(true);
-                            }
-                        }
-
-                        return true;
-                    }
-                }
-
-            }else if(toRow > fromRow){
-
-                for(int i=fromRow+1; i<toRow; i++){
-                    if(copyReference[i][fromCol].getPiece() != null){
-                        return false;
-                    }
-                }
-
-                if(copyReference[toRow][toCol].getPiece() == null){
-                    if(piece instanceof Rook){
-                        Rook rook = (Rook) piece;
-                        if(!rook.isMoved()){
-                            rook.setMoved(true);
-                        }
-                    }
-
-                    return true;
-                }else{
-                    if(copyReference[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        if(piece instanceof Rook){
-                            Rook rook = (Rook) piece;
-                            if(!rook.isMoved()){
-                                rook.setMoved(true);
-                            }
-                        }
-
-                        return true;
-                    }
-                }
-
-            }
-        }else if(fromCol != toCol){
-            if(fromCol > toCol){
-                for(int i=fromCol-1; i>toCol; i--){
-                    if(copyReference[fromRow][i].getPiece() != null){
-                        return false;
-                    }
-                }
-
-                if(copyReference[toRow][toCol].getPiece() == null){
-                    if(piece instanceof Rook){
-                        Rook rook = (Rook) piece;
-                        if(!rook.isMoved()){
-                            rook.setMoved(true);
-                        }
-                    }
-
-                    return true;
-                }else{
-                    if(copyReference[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        if(piece instanceof Rook){
-                            Rook rook = (Rook) piece;
-                            if(!rook.isMoved()){
-                                rook.setMoved(true);
-                            }
-                        }
-
-                        return true;
-                    }
-                }
-
-            }else if(toCol > fromCol){
-
-                for(int i=fromCol+1; i<toCol; i++){
-                    if(copyReference[fromRow][i].getPiece() != null){
-                        return false;
-                    }
-                }
-
-                if(copyReference[toRow][toCol].getPiece() == null){
-                    if(piece instanceof Rook){
-                        Rook rook = (Rook) piece;
-                        if(!rook.isMoved()){
-                            rook.setMoved(true);
-                        }
-                    }
-
-                    return true;
-                }else{
-                    if(copyReference[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        if(piece instanceof Rook){
-                            Rook rook = (Rook) piece;
-                            if(!rook.isMoved()){
-                                rook.setMoved(true);
-                            }
-                        }
-
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private void possibleKnightMovementsCopy(Knight knight, char side, int row, int col, Cell[][] copyReference){
-        int[] possibleRows = {row + 2, row + 2, row - 2, row - 2, row + 1, row - 1, row + 1, row - 1};
-        int[] possibleCols = {col + 1, col - 1, col + 1, col - 1, col + 2, col + 2, col - 2, col - 2};
-
-        for(int i=0; i<possibleRows.length; i++){
-            for(int j=0; j<possibleCols.length; j++){
-                if(isValidCoordinate(possibleRows[i], possibleCols[j])){
-                    if(isValidKnightMoveCopy(knight, side, row, col, possibleRows[i], possibleCols[j], copyReference)){
-                        if(side == 'W'){
-                            this.whiteAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
-                        }else{
-                            this.blackAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private boolean isValidKnightMoveCopy(Knight knight, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] copyReference){
-        if(toRow - fromRow == 2 || fromRow - toRow == 2){
-            if(toCol - fromCol == 1 || fromCol - toCol == 1){
-                if(copyReference[toRow][toCol].getPiece() == null){
-                    return true;
-                }else if(copyReference[toRow][toCol].getPiece().getSide() == side){
-                    return false;
-                }else{
-                    return true;
-                }
-            }else{
-                return false;
-            }
-        }else if(toCol - fromCol == 2 || fromCol - toCol == 2){
-            if(toRow - fromRow == 1 || fromRow - toRow == 1){
-                if(copyReference[toRow][toCol].getPiece() == null){
-                    return true;
-                }else if(copyReference[toRow][toCol].getPiece().getSide() == side){
-                    return false;
-                }else{
-                    return true;
-                }
-            }else{
-                return false;
-            }
-        }
-
-        return false;
-    }
-
-    private void possibleBishopMovementsCopy(Piece piece, char side, int row, int col, Cell[][] copyReference){
-        int auxCol = col+1;
-
-        for(int i=row+1; i<8; i++){
-            if(isValidCoordinate(i, auxCol)){
-                if(isValidBishopMoveCopy(piece, side, row, col, i, auxCol, copyReference)){
-                    if(side == 'W'){
-                        this.whiteAttackingSquares[i][auxCol] = 1;
-                    }else{
-                        this.blackAttackingSquares[i][auxCol] = 1;
-                    }
-                }
-            }
-            auxCol++;
-        }
-
-        auxCol = col+1;
-        for(int i=row-1; i>=0; i--){
-            if(isValidCoordinate(i, auxCol)){
-                if(isValidBishopMoveCopy(piece, side, row, col, i, auxCol, copyReference)){
-                    if(side == 'W'){
-                        this.whiteAttackingSquares[i][auxCol] = 1;
-                    }else{
-                        this.blackAttackingSquares[i][auxCol] = 1;
-                    }
-                }
-            }
-            auxCol++;
-        }
-
-        auxCol = col-1;
-        for(int i=row+1; i<8; i++){
-            if(isValidCoordinate(i, auxCol)){
-                if(isValidBishopMoveCopy(piece, side, row, col, i, auxCol, copyReference)){
-                    if(side == 'W'){
-                        this.whiteAttackingSquares[i][auxCol] = 1;
-                    }else{
-                        this.blackAttackingSquares[i][auxCol] = 1;
-                    }
-                }
-            }
-            auxCol--;
-        }
-
-        auxCol = col-1;
-        for(int i=row-1; i>=0; i--){
-            if(isValidCoordinate(i, auxCol)){
-                if(isValidBishopMoveCopy(piece, side, row, col, i, auxCol, copyReference)){
-                    if(side == 'W'){
-                        this.whiteAttackingSquares[i][auxCol] = 1;
-                    }else{
-                        this.blackAttackingSquares[i][auxCol] = 1;
-                    }
-                }
-            }
-            auxCol--;
-        }
-    }
-
-    private boolean isValidBishopMoveCopy(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] copyReference){
-        if(toCol > fromCol){
-            if(toRow > fromRow){
-                if(toCol - fromCol != toRow - fromRow){
-                    return false;
-                }
-
-                int rowIterator = fromRow+1;
-                int colIterator = fromCol+1;
-                
-                while(rowIterator != toRow && colIterator != toCol){
-
-                    if(copyReference[rowIterator][colIterator].getPiece() != null){
-                        return false;
-                    }
-
-                    rowIterator++;
-                    colIterator++;
-                }
-
-                if(copyReference[toRow][toCol].getPiece() == null){
-                    return true;
-                }else{
-                    if(copyReference[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        return true;
-                    }
-                }
-
-            }else if(fromRow > toRow){
-                if(toCol - fromCol != fromRow - toRow){
-                    return false;
-                }
-
-                int rowIterator = fromRow-1;
-                int colIterator = fromCol+1;
-                
-                while(rowIterator != toRow && colIterator != toCol){
-
-                    if(copyReference[rowIterator][colIterator].getPiece() != null){
-                        return false;
-                    }
-
-                    rowIterator--;
-                    colIterator++;
-                }
-
-                if(copyReference[toRow][toCol].getPiece() == null){
-                    return true;
-                }else{
-                    if(copyReference[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        return true;
-                    }
-                }
-            }
-        }else if(fromCol > toCol){
-            if(toRow > fromRow){
-                if(fromCol - toCol != toRow - fromRow){
-                    return false;
-                }
-
-                int rowIterator = fromRow+1;
-                int colIterator = fromCol-1;
-                
-                while(rowIterator != toRow && colIterator != toCol){
-
-                    if(copyReference[rowIterator][colIterator].getPiece() != null){
-                        return false;
-                    }
-
-                    rowIterator++;
-                    colIterator--;
-                }
-
-                if(copyReference[toRow][toCol].getPiece() == null){
-                    return true;
-                }else{
-                    if(copyReference[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        return true;
-                    }
-                }
-            }else if(fromRow > toRow){
-                if(fromCol - toCol != fromRow - toRow){
-                    return false;
-                }
-
-                int rowIterator = fromRow-1;
-                int colIterator = fromCol-1;
-                
-                while(rowIterator != toRow && colIterator != toCol){
-
-                    if(copyReference[rowIterator][colIterator].getPiece() != null){
-                        return false;
-                    }
-
-                    rowIterator--;
-                    colIterator--;
-                }
-
-                if(copyReference[toRow][toCol].getPiece() == null){
-                    return true;
-                }else{
-                    if(copyReference[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private void possibleKingMovementsCopy(King king, char side, int row, int col, Cell[][] copyReference){
-        int[] possibleRows = {row + 1, row + 1, row + 1, row - 1, row - 1, row - 1, row, row};
-        int[] possibleCols = {col, col + 1, col - 1, col, col + 1, col - 1, col + 1, col - 1};
-
-        for(int i=0; i<possibleRows.length; i++){
-            for(int j=0; j<possibleCols.length; j++){
-                if(isValidCoordinate(possibleRows[i], possibleCols[j])){
-                    if(isValidKingMoveCopy(king, side, row, col, possibleRows[i], possibleCols[j], copyReference)){
-                        if(side == 'W'){
-                            this.whiteAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
-                        }else{
-                            this.blackAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private boolean isValidKingMoveCopy(King king, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] copyReference){
-        if(!king.isMoved()){
-            if(fromRow == toRow){
-                if(toCol - fromCol == 2){
-                    if(side == 'W'){
-                        if(copyReference[fromRow][toCol].getPiece() == null && copyReference[fromRow][toCol-1].getPiece() == null && this.blackAttackingSquares[fromRow][toCol] == 0 && this.blackAttackingSquares[fromRow][toCol-1] == 0){
-                            if(copyReference[fromRow][toCol+1].getPiece() instanceof Rook){
-                                Rook rightSideRook = (Rook) copyReference[fromRow][toCol+1].getPiece();
-                                if(!rightSideRook.isMoved()){
-                                    king.setMoved(true);
-                                    this.castleFromCol = toCol + 1;
-                                    this.castleFromRow = fromRow;
-                                    this.castleToCol = toCol - 1;
-                                    this.castleToRow = fromRow;
-                                    this.castle = true;
-                                    this.whiteKingRow = toRow;
-                                    this.whiteKingCol = toCol;
-                                    return true;
-                                }else{
-                                    return false;
-                                }
-                            }
-                        }
-                    }else{
-                        if(copyReference[fromRow][toCol].getPiece() == null && copyReference[fromRow][toCol-1].getPiece() == null && this.whiteAttackingSquares[fromRow][toCol] == 0 && this.whiteAttackingSquares[fromRow][toCol-1] == 0){
-                            if(copyReference[fromRow][toCol+1].getPiece() instanceof Rook){
-                                Rook rightSideRook = (Rook) copyReference[fromRow][toCol+1].getPiece();
-                                if(!rightSideRook.isMoved()){
-                                    king.setMoved(true);
-                                    this.castleFromCol = toCol + 1;
-                                    this.castleFromRow = fromRow;
-                                    this.castleToCol = toCol - 1;
-                                    this.castleToRow = fromRow;
-                                    this.castle = true;
-                                    this.blackKingRow = toRow;
-                                    this.blackKingCol = toCol;
-                                    return true;
-                                }else{
-                                    return false;
-                                }
-                            }
-                        }
-                    }
-                }else if(fromCol - toCol == 2){
-                    if(side == 'W'){
-                        if(copyReference[fromRow][toCol].getPiece() == null && copyReference[fromRow][toCol+1].getPiece() == null && copyReference[fromRow][toCol-1].getPiece() == null && this.blackAttackingSquares[fromRow][toCol] == 0 && this.blackAttackingSquares[fromRow][toCol+1] == 0 && this.blackAttackingSquares[fromRow][toCol-1] == 0){
-                            if(copyReference[fromRow][toCol-2].getPiece() instanceof Rook){
-                                Rook leftSideRook = (Rook) copyReference[fromRow][toCol-2].getPiece();
-                                if(!leftSideRook.isMoved()){
-                                    king.setMoved(true);
-                                    this.castleFromCol = toCol - 2;
-                                    this.castleFromRow = fromRow;
-                                    this.castleToCol = toCol + 1;
-                                    this.castleToRow = fromRow;
-                                    this.castle = true;
-                                    this.whiteKingRow = toRow;
-                                    this.whiteKingCol = toCol;
-                                    return true;
-                                }else{
-                                    return false;
-                                }
-                            }
-                        }
-                    }else{
-                        if(copyReference[fromRow][toCol].getPiece() == null && copyReference[fromRow][toCol+1].getPiece() == null && copyReference[fromRow][toCol-1].getPiece() == null && this.whiteAttackingSquares[fromRow][toCol] == 0 && this.whiteAttackingSquares[fromRow][toCol+1] == 0 && this.whiteAttackingSquares[fromRow][toCol-1] == 0){
-                            if(copyReference[fromRow][toCol-2].getPiece() instanceof Rook){
-                                Rook leftSideRook = (Rook) copyReference[fromRow][toCol-2].getPiece();
-                                if(!leftSideRook.isMoved()){
-                                    king.setMoved(true);
-                                    this.castleFromCol = toCol - 2;
-                                    this.castleFromRow = fromRow;
-                                    this.castleToCol = toCol + 1;
-                                    this.castleToRow = fromRow;
-                                    this.castle = true;
-                                    this.blackKingRow = toRow;
-                                    this.blackKingCol = toCol;
-                                    return true;
-                                }else{
-                                    return false;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if(toCol - fromCol > 1 || fromCol - toCol > 1 || toRow - fromRow > 1 || fromRow - toRow > 1){
-            return false;
-        }else if(copyReference[toRow][toCol].getPiece() == null){
-            if(side == 'W'){
-                if(this.blackAttackingSquares[toRow][toCol] == 0){
-                    if(!king.isMoved()){
-                        king.setMoved(true);
-                    }
-                    this.whiteKingRow = toRow;
-                    this.whiteKingCol = toCol;
-                    return true;
-                }else{
-                    return false;
-                }
-            }else{
-                if(this.whiteAttackingSquares[toRow][toCol] == 0){
-                    if(!king.isMoved()){
-                        king.setMoved(true);
-                    }
-                    this.blackKingRow = toRow;
-                    this.blackKingCol = toCol;
-                    return true;
-                }else{
-                    return false;
-                }
-            }
-        }else if(copyReference[toRow][toCol].getPiece().getSide() == side){
-            return false;
-        }else{
-            if(!king.isMoved()){
-                king.setMoved(true);
-            }
-
-            if(side == 'W'){
-                this.whiteKingRow = toRow;
-                this.whiteKingCol = toCol;
-            }else{
-                this.blackKingRow = toRow;
-                this.blackKingCol = toCol;
-            }
-
-            return true;
-        }
-    }
-
 }
