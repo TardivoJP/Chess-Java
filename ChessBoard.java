@@ -9,8 +9,10 @@ public class ChessBoard extends JFrame {
     private Cell[][] boardState;
     private boolean validFromClick = false;
     private int fromRow, fromCol;
+    private JPanel lastClickedCell;
+    private int[][] potentialMovesForPiece;
 
-    public static Board board = new Board();
+    private static Board board = new Board();
 
     public ChessBoard(){
         setTitle("Chess Board");
@@ -26,7 +28,7 @@ public class ChessBoard extends JFrame {
             mainPanel.add(new JLabel(Integer.toString(i), SwingConstants.CENTER));
             for(int j=0; j<8; j++){
                 JPanel cellPanel = new JPanel();
-                cellPanel.setBackground((i + j) % 2 == 0 ? Color.WHITE : Color.GREEN);
+                cellPanel.setBackground((i + j) % 2 == 0 ? Color.decode("#eeeed2") : Color.decode("#769656"));
                 mainPanel.add(cellPanel);
 
                 cellPanels[i - 1][j] = cellPanel;
@@ -55,16 +57,33 @@ public class ChessBoard extends JFrame {
     }
 
     private void handleCellClick(int row, int col){
+        //Convert ChessBoard row to Board row
         int logicRow = 7 - row;
 
         if(!validFromClick){
             //If it's the first click, check if the cell has a piece
             JLabel cellLabel = (JLabel) cellPanels[row][col].getComponent(0);
-            if(!cellLabel.getText().equals("X")) {
+            if (cellLabel.getIcon() != null) {
                 validFromClick = true;
+
                 fromRow = logicRow;
                 fromCol = col;
+
+                potentialMovesForPiece = board.getPossibleMoves(fromRow, fromCol);
+                highlightPossibleMoves();
             }
+
+            //Set the border for the last clicked cell to null to remove the previous border
+            if (lastClickedCell != null) {
+                lastClickedCell.setBorder(null);
+            }
+
+            //Set the blue border for the current cell
+            cellPanels[row][col].setBorder(BorderFactory.createLineBorder(Color.BLUE, 2));
+
+            //Update the last clicked cell reference
+            lastClickedCell = cellPanels[row][col];
+            
         }else{
             //If it's the second click, call the sendMove method from the Board class
             boolean isValidMove = board.sendMove(fromRow, fromCol, logicRow, col);
@@ -78,6 +97,37 @@ public class ChessBoard extends JFrame {
             //Reset the variables for the next move
             validFromClick = false;
             fromRow = fromCol = -1;
+
+            // Set the border for the last clicked cell to null to remove the previous border
+            if (lastClickedCell != null) {
+                lastClickedCell.setBorder(null);
+            }
+
+            removePossibleMovesHighlights();
+        }
+    }
+
+    //Method to highlight cells with green border based on possible moves
+    private void highlightPossibleMoves() {
+        for (int i=0; i<8; i++) {
+            for (int j=0; j<8; j++) {
+                //Convert ChessBoard row to Board row
+                int logicRow = 7 - i;
+
+                //Check if the cell is a valid move
+                if (potentialMovesForPiece[logicRow][j] == 1) {
+                    cellPanels[i][j].setBorder(BorderFactory.createLineBorder(Color.GREEN, 2));
+                }
+            }
+        }
+    }
+
+    //Method to remove the green borders from the highlighted cells
+    private void removePossibleMovesHighlights() {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                cellPanels[i][j].setBorder(null);
+            }
         }
     }
 
@@ -86,16 +136,23 @@ public class ChessBoard extends JFrame {
 
         for(int i=0; i<8; i++){
             for(int j=0; j<8; j++){
+                //Convert ChessBoard row to Board row
                 int logicRow = 7 - i;
 
-                String pieceLabel = boardState[logicRow][j].getPiece() == null ? "X" : boardState[logicRow][j].getPiece().getLabel();
+                Piece piece = boardState[logicRow][j].getPiece();
 
-                JLabel label = new JLabel(pieceLabel, SwingConstants.CENTER);
+                //Create a label with the appropriate image
+                JLabel label = new JLabel();
+                if (piece != null) {
+                    String pieceLabel = piece.getLabel();
+                    ImageIcon icon = new ImageIcon("images/" + pieceLabel + ".png");
+                    label.setIcon(icon);
+                }
+
                 cellPanels[i][j].removeAll();
                 cellPanels[i][j].add(label);
             }
         }
-
         revalidate();
         repaint();
     }

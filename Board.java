@@ -4,6 +4,7 @@ public class Board {
     private Cell[][] cells;
     private int[][] whiteAttackingSquares;
     private int[][] blackAttackingSquares;
+    private int[][] potentialMovesForSelectedPiece;
     private boolean enPassant;
     private int enPassantRow;
     private int enPassantCol;
@@ -29,6 +30,7 @@ public class Board {
         cells = new Cell[8][8];
         this.whiteAttackingSquares = new int[8][8];
         this.blackAttackingSquares = new int[8][8];
+        this.potentialMovesForSelectedPiece = new int[8][8];
         initializeBoard();
         currentTurn = Turn.WHITE;
         this.castle = false;
@@ -52,6 +54,7 @@ public class Board {
                 cells[i][j] = new Cell();
                 whiteAttackingSquares[i][j] = 0;
                 blackAttackingSquares[i][j] = 0;
+                potentialMovesForSelectedPiece[i][j] = 0;
             }
         }
 
@@ -108,6 +111,38 @@ public class Board {
         }else{
             return false;
         }
+    }
+
+    public int[][] getPossibleMoves(int row, int col){
+        Piece selectedPiece = this.cells[row][col].getPiece();
+
+        int[][] whiteAttacksBackUp = this.whiteAttackingSquares;
+        int[][] blackAttacksBackUp = this.blackAttackingSquares;
+
+        for(int i=0;i<8;i++){
+            for(int j=0;j<8;j++){
+                this.potentialMovesForSelectedPiece[i][j] = 0;
+            }
+        }
+
+        if(selectedPiece.getSide() == 'W'){
+            if(this.currentTurn == Turn.WHITE){
+                clearAttackingGrid('W');
+                checkPossibleMovements(selectedPiece, selectedPiece.getSide(), row, col, this.cells);
+                this.potentialMovesForSelectedPiece = this.whiteAttackingSquares;
+            }
+        }else{
+            if(this.currentTurn == Turn.BLACK){
+                clearAttackingGrid('B');
+                checkPossibleMovements(selectedPiece, selectedPiece.getSide(), row, col, this.cells);
+                this.potentialMovesForSelectedPiece = this.blackAttackingSquares;
+            }
+        }
+
+        this.whiteAttackingSquares = whiteAttacksBackUp;
+        this.blackAttackingSquares = blackAttacksBackUp;
+
+        return this.potentialMovesForSelectedPiece;
     }
 
     private void gameLoop(){
