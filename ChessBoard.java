@@ -131,6 +131,53 @@ public class ChessBoard extends JFrame {
         }
     }
 
+    //Method to check for game over and display the result
+    private void checkGameOver() {
+        if (!board.isGameRunning()) {
+            String winner;
+            String imagePath;
+
+            if (board.isWhiteKingMated()) {
+                winner = "Black";
+                imagePath = "images/BQ.png";
+            } else if (board.isBlackKingMated()) {
+                winner = "White";
+                imagePath = "images/WQ.png";
+            } else {
+                //The game is not over
+                return;
+            }
+
+            //Create a new JFrame to display the result
+            JFrame resultFrame = new JFrame("Game Over");
+            resultFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            resultFrame.setSize(300, 200);
+
+            JPanel panel = new JPanel(new BorderLayout());
+
+            //Add text message
+            JLabel messageLabel = new JLabel(winner + " side wins!");
+            messageLabel.setHorizontalAlignment(JLabel.CENTER);
+            panel.add(messageLabel, BorderLayout.CENTER);
+
+            //Add images of the respective queen and king
+            ImageIcon queenIcon = new ImageIcon(imagePath);
+            ImageIcon kingIcon = new ImageIcon(imagePath.replace("Q", "K"));
+
+            JLabel queenLabel = new JLabel(queenIcon);
+            JLabel kingLabel = new JLabel(kingIcon);
+
+            panel.add(queenLabel, BorderLayout.WEST);
+            panel.add(kingLabel, BorderLayout.EAST);
+
+            //Add the panel to the frame
+            resultFrame.add(panel);
+
+            //Set the frame to be visible
+            resultFrame.setVisible(true);
+        }
+    }
+
     public void updateBoard(){
         boardState = board.getCurrentBoardState();
 
@@ -155,6 +202,9 @@ public class ChessBoard extends JFrame {
         }
         revalidate();
         repaint();
+
+        //Check for game over and display the result
+        checkGameOver();
     }
 
     public static void main(String[] args) {

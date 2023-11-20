@@ -8,6 +8,8 @@ public class Board {
     private boolean enPassant;
     private int enPassantRow;
     private int enPassantCol;
+    private enum PawnPossibilityState {MOVING, POSSIBLE}
+    private PawnPossibilityState currentPawnPossibilityState;
     private boolean castle;
     private boolean promotion;
     private int castleFromRow;
@@ -26,13 +28,26 @@ public class Board {
     private enum Turn {WHITE, BLACK}
     private Turn currentTurn;
 
+    public boolean isGameRunning() {
+        return gameRunning;
+    }
+
+    public boolean isWhiteKingMated() {
+        return whiteKingMated;
+    }
+
+    public boolean isBlackKingMated() {
+        return blackKingMated;
+    }
+
     public Board() {
         cells = new Cell[8][8];
         this.whiteAttackingSquares = new int[8][8];
         this.blackAttackingSquares = new int[8][8];
         this.potentialMovesForSelectedPiece = new int[8][8];
         initializeBoard();
-        currentTurn = Turn.WHITE;
+        this.currentTurn = Turn.WHITE;
+        this.currentPawnPossibilityState = PawnPossibilityState.MOVING;
         this.castle = false;
         this.promotion = false;
         this.whiteKingChecked = false;
@@ -102,8 +117,10 @@ public class Board {
 
         if(validMove){
             if(currentTurn == Turn.WHITE){
+                //printCurrentAtackGrid('W');
                 currentTurn = Turn.BLACK;
             }else{
+                //printCurrentAtackGrid('B');
                 currentTurn = Turn.WHITE;
             }
 
@@ -116,8 +133,8 @@ public class Board {
     public int[][] getPossibleMoves(int row, int col){
         Piece selectedPiece = this.cells[row][col].getPiece();
 
-        int[][] whiteAttacksBackUp = this.whiteAttackingSquares;
-        int[][] blackAttacksBackUp = this.blackAttackingSquares;
+        int[][] whiteAttacksBackUp = copyAttackState(this.whiteAttackingSquares);
+        int[][] blackAttacksBackUp = copyAttackState(this.blackAttackingSquares);
 
         for(int i=0;i<8;i++){
             for(int j=0;j<8;j++){
@@ -261,7 +278,9 @@ public class Board {
                 handlePromotion(toCell, piece.getSide());
             }
 
+            this.currentPawnPossibilityState = PawnPossibilityState.POSSIBLE;
             createAttackingGrid(piece.getSide(), this.cells);
+            this.currentPawnPossibilityState = PawnPossibilityState.MOVING;
 
             System.out.println("Move successful!");
 
@@ -354,6 +373,12 @@ public class Board {
             if(toCol - fromCol == 0){
                 //Check if there's a piece in the way in forward move
                 if(boardStateReference[toRow][toCol].getPiece() == null){
+                    //Override that's only used for filling in attacking grid,
+                    //since pawns can't capture going forwards this returns false
+                    if(this.currentPawnPossibilityState == PawnPossibilityState.POSSIBLE){
+                        return false;
+                    }
+
                     if(pawn.isDoubleMoveLastTurn() == true){
                         pawn.setDoubleMoveLastTurn(false);
                     }
@@ -367,6 +392,11 @@ public class Board {
             }
             //Check diagonal move
             if(toCol - fromCol == 1 || fromCol - toCol == 1){
+                //Override that's only used for filling in attacking grid
+                if(this.currentPawnPossibilityState == PawnPossibilityState.POSSIBLE){
+                    return true;
+                }
+
                 //Check if there's a piece to capture in diagonal move
                 if(boardStateReference[toRow][toCol].getPiece() == null){
                     //Check for En Passant
@@ -412,6 +442,12 @@ public class Board {
             }
         //Check for double move    
         }else if((side == 'W' && fromRow - toRow == 2) || (side == 'B' && toRow - fromRow == 2)){
+            //Override that's only used for filling in attacking grid,
+            //since pawns can't capture going forwards this returns false
+            if(this.currentPawnPossibilityState == PawnPossibilityState.POSSIBLE){
+                return false;
+            }
+
             if(toCol - fromCol == 0){
                 if(!pawn.isMoved()){
                     //Check if there's a piece in the way in double move
@@ -946,14 +982,12 @@ public class Board {
         }
 
         for(int i=start; i<possibleRows.length; i++){
-            for(int j=start; j<possibleCols.length; j++){
-                if(isValidCoordinate(possibleRows[i], possibleCols[j])){
-                    if(isValidPawnMove(pawn, side, row, col, possibleRows[i], possibleCols[j], boardStateReference)){
-                        if(side == 'W'){
-                            this.whiteAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
-                        }else{
-                            this.blackAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
-                        }
+            if(isValidCoordinate(possibleRows[i], possibleCols[i])){
+                if(isValidPawnMove(pawn, side, row, col, possibleRows[i], possibleCols[i], boardStateReference)){
+                    if(side == 'W'){
+                        this.whiteAttackingSquares[possibleRows[i]][possibleCols[i]] = 1;
+                    }else{
+                        this.blackAttackingSquares[possibleRows[i]][possibleCols[i]] = 1;
                     }
                 }
             }
@@ -993,14 +1027,12 @@ public class Board {
         int[] possibleCols = {col + 1, col - 1, col + 1, col - 1, col + 2, col + 2, col - 2, col - 2};
 
         for(int i=0; i<possibleRows.length; i++){
-            for(int j=0; j<possibleCols.length; j++){
-                if(isValidCoordinate(possibleRows[i], possibleCols[j])){
-                    if(isValidKnightMove(knight, side, row, col, possibleRows[i], possibleCols[j], boardStateReference)){
-                        if(side == 'W'){
-                            this.whiteAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
-                        }else{
-                            this.blackAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
-                        }
+            if(isValidCoordinate(possibleRows[i], possibleCols[i])){
+                if(isValidKnightMove(knight, side, row, col, possibleRows[i], possibleCols[i], boardStateReference)){
+                    if(side == 'W'){
+                        this.whiteAttackingSquares[possibleRows[i]][possibleCols[i]] = 1;
+                    }else{
+                        this.blackAttackingSquares[possibleRows[i]][possibleCols[i]] = 1;
                     }
                 }
             }
@@ -1091,14 +1123,12 @@ public class Board {
         }
 
         for(int i=0; i<possibleRows.length; i++){
-            for(int j=0; j<possibleCols.length; j++){
-                if(isValidCoordinate(possibleRows[i], possibleCols[j])){
-                    if(isValidKingMove(king, side, row, col, possibleRows[i], possibleCols[j], boardStateReference)){
-                        if(side == 'W'){
-                            this.whiteAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
-                        }else{
-                            this.blackAttackingSquares[possibleRows[i]][possibleCols[j]] = 1;
-                        }
+            if(isValidCoordinate(possibleRows[i], possibleCols[i])){
+                if(isValidKingMove(king, side, row, col, possibleRows[i], possibleCols[i], boardStateReference)){
+                    if(side == 'W'){
+                        this.whiteAttackingSquares[possibleRows[i]][possibleCols[i]] = 1;
+                    }else{
+                        this.blackAttackingSquares[possibleRows[i]][possibleCols[i]] = 1;
                     }
                 }
             }
@@ -1109,12 +1139,19 @@ public class Board {
         int[][] opposingAttacks;
         int[][] currentSideAttacks;
 
+        int currentKingRow;
+        int currentKingCol;
+
         if(side == 'W'){
-            opposingAttacks = this.blackAttackingSquares;
-            currentSideAttacks = this.whiteAttackingSquares;
+            opposingAttacks = copyAttackState(this.blackAttackingSquares);
+            currentSideAttacks = copyAttackState(this.whiteAttackingSquares);
+            currentKingRow = this.whiteKingRow;
+            currentKingCol = this.whiteKingCol;
         }else{
-            opposingAttacks = this.whiteAttackingSquares;
-            currentSideAttacks = this.blackAttackingSquares;
+            opposingAttacks = copyAttackState(this.whiteAttackingSquares);
+            currentSideAttacks = copyAttackState(this.blackAttackingSquares);
+            currentKingRow = this.blackKingRow;
+            currentKingCol = this.blackKingCol;
         }
 
         clearAttackingGrid('W');
@@ -1131,7 +1168,6 @@ public class Board {
 
                                 if(side == 'W'){
                                     if(this.whiteAttackingSquares[k][l] == 1){
-
                                         Cell[][] copyState = copyBoardState(boardStateReference);
 
                                         Cell possibleFromCell = copyState[i][j];
@@ -1141,6 +1177,11 @@ public class Board {
 
                                         possibleToCell.setPiece(currentPiece);
                                         possibleFromCell.setPiece(null);
+
+                                        if(boardStateReference[i][j].getPiece() instanceof King){
+                                            currentKingRow = k;
+                                            currentKingCol = l;
+                                        }
 
                                         clearAttackingGrid('B');
                                         for(int m=0; m<8; m++){
@@ -1153,12 +1194,16 @@ public class Board {
                                             }
                                         }
 
-                                        if(this.blackAttackingSquares[this.whiteKingRow][this.whiteKingCol] == 0){
+
+
+                                        if(this.blackAttackingSquares[currentKingRow][currentKingCol] == 0){
                                             this.whiteAttackingSquares = currentSideAttacks;
                                             this.blackAttackingSquares = opposingAttacks;
                                             return true;
                                         }
 
+                                        currentKingRow = this.whiteKingRow;
+                                        currentKingCol = this.whiteKingCol;
                                     }
                                 }else{
                                     if(this.blackAttackingSquares[k][l] == 1){
@@ -1173,6 +1218,11 @@ public class Board {
                                         possibleToCell.setPiece(currentPiece);
                                         possibleFromCell.setPiece(null);
 
+                                        if(boardStateReference[i][j].getPiece() instanceof King){
+                                            currentKingRow = k;
+                                            currentKingCol = l;
+                                        }
+
                                         clearAttackingGrid('W');
                                         for(int m=0; m<8; m++){
                                             for(int n=0; n<8; n++){
@@ -1184,12 +1234,14 @@ public class Board {
                                             }
                                         }
 
-                                        if(this.whiteAttackingSquares[this.blackKingRow][this.blackKingCol] == 0){
+                                        if(this.whiteAttackingSquares[currentKingRow][currentKingCol] == 0){
                                             this.whiteAttackingSquares = opposingAttacks;
                                             this.blackAttackingSquares = currentSideAttacks;
                                             return true;
                                         }
 
+                                        currentKingRow = this.blackKingRow;
+                                        currentKingCol = this.blackKingCol;
                                     }
                                 }
                             }    
@@ -1220,8 +1272,8 @@ public class Board {
     private boolean moveGetsOutofCheck(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, int previousKingRow, int previousKingCol, Cell[][] boardStateReference){
         boolean result = false;
 
-        int[][] whiteAttacksBackUp = this.whiteAttackingSquares;
-        int[][] blackAttacksBackUp = this.blackAttackingSquares;
+        int[][] whiteAttacksBackUp = copyAttackState(this.whiteAttackingSquares);
+        int[][] blackAttacksBackUp = copyAttackState(this.blackAttackingSquares);
 
         Cell[][] copyState = copyBoardState(boardStateReference);
 
@@ -1294,6 +1346,16 @@ public class Board {
             }
         }
         return copyState;
+    }
+
+    private int[][] copyAttackState(int[][] originalAttackGrid){
+        int[][] copyAttackState = new int[8][8];
+        for(int i=0; i<8; i++){
+            for(int j=0; j<8; j++){
+                copyAttackState[i][j] = originalAttackGrid[i][j];
+            }
+        }
+        return copyAttackState;
     }
     
     public void printCurrentBoard(){
