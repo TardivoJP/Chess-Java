@@ -412,12 +412,16 @@ public class Board {
             }
         //Check for double move    
         }else if((side == 'W' && fromRow - toRow == 2) || (side == 'B' && toRow - fromRow == 2)){
-            if(!pawn.isMoved()){
-                //Check if there's a piece in the way in double move
-                if(boardStateReference[toRow][toCol].getPiece() == null){
-                    pawn.setMoved(true);
-                    pawn.setDoubleMoveLastTurn(true);
-                    return true;
+            if(toCol - fromCol == 0){
+                if(!pawn.isMoved()){
+                    //Check if there's a piece in the way in double move
+                    if(boardStateReference[toRow][toCol].getPiece() == null){
+                        pawn.setMoved(true);
+                        pawn.setDoubleMoveLastTurn(true);
+                        return true;
+                    }else{
+                        return false;
+                    }
                 }else{
                     return false;
                 }
@@ -911,7 +915,7 @@ public class Board {
             int currentBlackKingRow = this.blackKingRow;
             int currentBlackKingCol = this.blackKingCol;
 
-            possibleKingMovements(king, side, row, col, boardStateReference);
+            possibleKingMovements(king, side, row, col, (this.whiteKingChecked || this.blackKingChecked), boardStateReference);
 
             king.setMoved(currentMovedState);
             this.castle = currentCastleState;
@@ -1066,9 +1070,25 @@ public class Board {
         }
     }
 
-    private void possibleKingMovements(King king, char side, int row, int col, Cell[][] boardStateReference){
+    private void possibleKingMovements(King king, char side, int row, int col, boolean check, Cell[][] boardStateReference){
         int[] possibleRows = {row + 1, row + 1, row + 1, row - 1, row - 1, row - 1, row, row};
         int[] possibleCols = {col, col + 1, col - 1, col, col + 1, col - 1, col + 1, col - 1};
+
+        if(!check){
+            if(king.isMoved() == false){
+                int delta = -2;
+                for(int i=0; i<2; i++){
+                    if(isValidKingMove(king, side, row, col, row, col+delta, boardStateReference)){
+                        if(side == 'W'){
+                            this.whiteAttackingSquares[row][col+delta] = 1;
+                        }else{
+                            this.blackAttackingSquares[row][col+delta] = 1;
+                        }
+                    }
+                    delta += 4;
+                }
+            }
+        }
 
         for(int i=0; i<possibleRows.length; i++){
             for(int j=0; j<possibleCols.length; j++){
