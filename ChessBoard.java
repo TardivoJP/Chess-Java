@@ -1,5 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
@@ -11,6 +13,7 @@ public class ChessBoard extends JFrame {
     private int fromRow, fromCol;
     private JPanel lastClickedCell;
     private int[][] potentialMovesForPiece;
+    private boolean promotionHandled = true;
 
     private static Board board = new Board();
 
@@ -57,53 +60,63 @@ public class ChessBoard extends JFrame {
     }
 
     private void handleCellClick(int row, int col){
-        //Convert ChessBoard row to Board row
-        int logicRow = 7 - row;
-
-        if(!validFromClick){
-            //If it's the first click, check if the cell has a piece
-            JLabel cellLabel = (JLabel) cellPanels[row][col].getComponent(0);
-            if (cellLabel.getIcon() != null) {
-                validFromClick = true;
-
-                fromRow = logicRow;
-                fromCol = col;
-
-                potentialMovesForPiece = board.getPossibleMoves(fromRow, fromCol);
-                highlightPossibleMoves();
-            }
-
-            //Set the border for the last clicked cell to null to remove the previous border
-            if (lastClickedCell != null) {
-                lastClickedCell.setBorder(null);
-            }
-
-            //Set the blue border for the current cell
-            cellPanels[row][col].setBorder(BorderFactory.createLineBorder(Color.BLUE, 2));
-
-            //Update the last clicked cell reference
-            lastClickedCell = cellPanels[row][col];
-            
+        if(!promotionHandled){
+            JOptionPane.showMessageDialog(this, "Please choose a piece to promote to!", "Error", JOptionPane.ERROR_MESSAGE);
         }else{
-            //If it's the second click, call the sendMove method from the Board class
-            boolean isValidMove = board.sendMove(fromRow, fromCol, logicRow, col);
+            //Convert ChessBoard row to Board row
+            int logicRow = 7 - row;
 
-            if(isValidMove){
-                updateBoard();
+            if(!validFromClick){
+                //If it's the first click, check if the cell has a piece
+                JLabel cellLabel = (JLabel) cellPanels[row][col].getComponent(0);
+                if(cellLabel.getIcon() != null){
+                    validFromClick = true;
+
+                    fromRow = logicRow;
+                    fromCol = col;
+
+                    potentialMovesForPiece = board.getPossibleMoves(fromRow, fromCol);
+                    highlightPossibleMoves();
+                }
+
+                //Set the border for the last clicked cell to null to remove the previous border
+                if(lastClickedCell != null){
+                    lastClickedCell.setBorder(null);
+                }
+
+                //Set the blue border for the current cell
+                cellPanels[row][col].setBorder(BorderFactory.createLineBorder(Color.BLUE, 2));
+
+                //Update the last clicked cell reference
+                lastClickedCell = cellPanels[row][col];
+                
             }else{
-                JOptionPane.showMessageDialog(this, "Invalid move", "Error", JOptionPane.ERROR_MESSAGE);
+                //If it's the second click, call the sendMove method from the Board class
+                boolean isValidMove = board.sendMove(fromRow, fromCol, logicRow, col);
+
+                if(isValidMove){
+                    updateBoard();
+
+                    if(board.isPromotion()){
+                        promotionHandled = false;
+                        openPromotionWindow(logicRow, col);
+                    }
+
+                }else{
+                    JOptionPane.showMessageDialog(this, "Invalid move", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+
+                //Reset the variables for the next move
+                validFromClick = false;
+                fromRow = fromCol = -1;
+
+                //Set the border for the last clicked cell to null to remove the previous border
+                if(lastClickedCell != null){
+                    lastClickedCell.setBorder(null);
+                }
+
+                removePossibleMovesHighlights();
             }
-
-            //Reset the variables for the next move
-            validFromClick = false;
-            fromRow = fromCol = -1;
-
-            // Set the border for the last clicked cell to null to remove the previous border
-            if (lastClickedCell != null) {
-                lastClickedCell.setBorder(null);
-            }
-
-            removePossibleMovesHighlights();
         }
     }
 
@@ -129,6 +142,58 @@ public class ChessBoard extends JFrame {
                 cellPanels[i][j].setBorder(null);
             }
         }
+    }
+
+    //Method to open a window with promotion choices
+    private void openPromotionWindow(int toRow, int toCol) {
+        // Create a new JFrame for the promotion window
+        JFrame promotionFrame = new JFrame("Pawn Promotion");
+        promotionFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        promotionFrame.setSize(300, 150);
+        promotionFrame.setLayout(new GridLayout(1, 4));
+        
+        String[] whitePiecelabels = {"WQ", "WR", "WB", "WN"};
+        String[] blackPiecelabels = {"BQ", "BR", "BB", "BN"};
+
+        //Create buttons for each promotion choice
+        for (int i = 1; i <= 4; i++) {
+            int choice = i;
+
+            JButton promotionButton  = new JButton();
+
+            String imagePath;
+            if(!board.getCurrentTurn()){
+                imagePath = "images/" + whitePiecelabels[i-1] + ".png";
+            }else{
+                imagePath = "images/" + blackPiecelabels[i-1] + ".png";
+            }
+
+            ImageIcon icon = new ImageIcon(imagePath);
+            promotionButton.setIcon(icon);
+
+            //Add ActionListener to handle button click
+            promotionButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    //Call the sendPromotionSignal method from the Board class
+                    board.sendPromotionSignal(toRow, toCol, choice);
+
+                    //Update the board after promotion
+                    updateBoard();
+
+                    //Update promotion handled flag to continue the game
+                    promotionHandled = true;
+
+                    //Close the promotion window
+                    ((JButton) e.getSource()).getRootPane().getParent().setVisible(false);
+                }
+            });
+
+            promotionFrame.add(promotionButton);
+        }
+
+        //Set the frame to be visible
+        promotionFrame.setVisible(true);
     }
 
     //Method to check for game over and display the result

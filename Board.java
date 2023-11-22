@@ -40,6 +40,17 @@ public class Board {
         return blackKingMated;
     }
 
+    public boolean isPromotion() {
+        return promotion;
+    }
+
+    public boolean getCurrentTurn() {
+        if(this.currentTurn == Turn.WHITE){
+            return true;
+        }
+        return false;
+    }
+
     public Board() {
         cells = new Cell[8][8];
         this.whiteAttackingSquares = new int[8][8];
@@ -60,7 +71,6 @@ public class Board {
         this.blackKingCol = 4;
         this.gameRunning = true;
         this.enPassant = false;
-        //gameLoop();
     }
 
     private void initializeBoard() {
@@ -130,6 +140,19 @@ public class Board {
         }
     }
 
+    public void sendPromotionSignal(int toRow, int toCol, int choice){
+        Cell toCell = this.cells[toRow][toCol];
+        Piece piece = toCell.getPiece();
+
+        handlePromotion(toCell, piece.getSide(), choice);
+
+        this.currentPawnPossibilityState = PawnPossibilityState.POSSIBLE;
+        createAttackingGrid(piece.getSide(), this.cells);
+        this.currentPawnPossibilityState = PawnPossibilityState.MOVING;
+
+        checkIfAnyKingAttacked(piece, piece.getSide(), cells);
+    }
+
     public int[][] getPossibleMoves(int row, int col){
         Piece selectedPiece = this.cells[row][col].getPiece();
 
@@ -160,55 +183,6 @@ public class Board {
         this.blackAttackingSquares = blackAttacksBackUp;
 
         return this.potentialMovesForSelectedPiece;
-    }
-
-    private void gameLoop(){
-        Scanner scanner = new Scanner(System.in);
-
-        while(this.gameRunning){
-            printCurrentBoard();
-
-            if(currentTurn == Turn.WHITE){
-                System.out.println("White to move.");
-            }else{
-                System.out.println("Black to move.");
-            }
-
-            boolean validMove = false;
-
-            while(!validMove){
-                /* System.out.print("Enter the next move: ");
-                String nextMove = scanner.nextLine();
-
-                String[] fromAndTo = nextMove.split("->");
-                String[] fromValues = fromAndTo[0].split(",");
-                String[] toValues = fromAndTo[1].split(",");
-
-                validMove = move(Integer.parseInt(fromValues[0]), Integer.parseInt(fromValues[1]), Integer.parseInt(toValues[0]), Integer.parseInt(toValues[1])); */
-
-                System.out.print("Enter the row to move from: ");
-                int fromRow = scanner.nextInt();
-
-                System.out.print("Enter the column to move from: ");
-                int fromCol = scanner.nextInt();
-
-                System.out.print("Enter the row to move to: ");
-                int toRow = scanner.nextInt();
-
-                System.out.print("Enter the column to move to: ");
-                int toCol = scanner.nextInt();
-
-                validMove = move(fromRow, fromCol, toRow, toCol);
-            }
-
-            if(currentTurn == Turn.WHITE){
-                currentTurn = Turn.BLACK;
-            }else{
-                currentTurn = Turn.WHITE;
-            }
-        }
-        
-        scanner.close();
     }
 
     public boolean move(int fromRow, int fromCol, int toRow, int toCol) {
@@ -274,50 +248,50 @@ public class Board {
                 handleCastling(this.cells);
             }
 
-            if(promotion){
-                handlePromotion(toCell, piece.getSide());
-            }
-
             this.currentPawnPossibilityState = PawnPossibilityState.POSSIBLE;
             createAttackingGrid(piece.getSide(), this.cells);
             this.currentPawnPossibilityState = PawnPossibilityState.MOVING;
 
             System.out.println("Move successful!");
 
-            if(piece.getSide() == 'W'){
-                if(this.whiteAttackingSquares[this.blackKingRow][this.blackKingCol] == 1){
-                    this.blackKingChecked = true;
-                    System.out.println("Black king checked!");
-
-                    if(!anyMovesLeft('B', this.cells)){
-                        this.blackKingMated = true;
-                        System.out.println("Check mate!");
-                    }
-                }
-            }else{
-                if(this.blackAttackingSquares[this.whiteKingRow][this.whiteKingCol] == 1){
-                    this.whiteKingChecked = true;
-                    System.out.println("White king checked!");
-
-                    if(!anyMovesLeft('W', this.cells)){
-                        this.whiteKingMated = true;
-                        System.out.println("Check mate!");
-                    }
-                }
-            }
-
-            if(this.whiteKingMated){
-                System.out.println("Black wins!");
-                this.gameRunning = false;
-            }else if(this.blackKingMated){
-                System.out.println("White wins!");
-                this.gameRunning = false;
-            }
+            checkIfAnyKingAttacked(piece, piece.getSide(), cells);
 
             return true;
         }else{
             System.out.println("Invalid move for the selected piece.");
             return false;
+        }
+    }
+
+    private void checkIfAnyKingAttacked(Piece piece, char side, Cell[][] boardStateReference){
+        if(side == 'W'){
+            if(this.whiteAttackingSquares[this.blackKingRow][this.blackKingCol] == 1){
+                this.blackKingChecked = true;
+                System.out.println("Black king checked!");
+
+                if(!anyMovesLeft('B', boardStateReference)){
+                    this.blackKingMated = true;
+                    System.out.println("Check mate!");
+                }
+            }
+        }else{
+            if(this.blackAttackingSquares[this.whiteKingRow][this.whiteKingCol] == 1){
+                this.whiteKingChecked = true;
+                System.out.println("White king checked!");
+
+                if(!anyMovesLeft('W', boardStateReference)){
+                    this.whiteKingMated = true;
+                    System.out.println("Check mate!");
+                }
+            }
+        }
+
+        if(this.whiteKingMated){
+            System.out.println("Black wins!");
+            this.gameRunning = false;
+        }else if(this.blackKingMated){
+            System.out.println("White wins!");
+            this.gameRunning = false;
         }
     }
 
@@ -845,30 +819,26 @@ public class Board {
         this.castle = false;
     }
 
-    private void handlePromotion(Cell cell, char side){
+    private void handlePromotion(Cell cell, char side, int choice){
         System.out.print((side == 'W') ? "White" : "Black");
-        System.out.println(" Pawn was promoted!");
-
-        int choice = 0;
-        //Can't close this Scanner otherwise it conflicts with the one in the Main class
-        Scanner s = new Scanner(System.in);
-        while(choice < 1 || choice > 4){
-            System.out.println("Input 1 for queen, 2 for rook, 3 for bishop and 4 for knight");
-            choice = s.nextInt();
-        }
+        System.out.print(" Pawn was promoted ");
 
         switch(choice){
             case 1:
                 cell.setPiece(new Queen(side));
+                System.out.println(" Pawn was promoted to Queen!");
                 break;
             case 2:
                 cell.setPiece(new Rook(side));
+                System.out.println(" Pawn was promoted to Rook!");
                 break;
             case 3:
                 cell.setPiece(new Bishop(side));
+                System.out.println(" Pawn was promoted to Bishop!");
                 break;
             case 4:
                 cell.setPiece(new Knight(side));
+                System.out.println(" Pawn was promoted to Knight!");
                 break;
         }
 
