@@ -17,4 +17,8 @@ public class Piece {
     public void setSide(char side) {
         this.side = side;
     }
+
+    protected boolean isValidCoordinate(int row, int col) {
+        return row >= 0 && row < 8 && col >= 0 && col < 8;
+    }
 }

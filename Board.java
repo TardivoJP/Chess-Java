@@ -1,5 +1,3 @@
-import java.util.Scanner;
-
 public class Board {
     private Cell[][] cells;
     private int[][] whiteAttackingSquares;
@@ -313,22 +311,30 @@ public class Board {
             if(fromRow != toRow && fromCol != toCol){
                 return false;
             }
+            Rook aux = new Rook(side);
+            aux.isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference);
 
-            return isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference);
+            return aux.isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference);
         }
 
         if(piece instanceof Knight){
             Knight knight = (Knight) piece;
 
-            return isValidKnightMove(knight, side, fromRow, fromCol, toRow, toCol, boardStateReference);
+            return knight.isValidKnightMove(knight, side, fromRow, fromCol, toRow, toCol, boardStateReference);
         }
 
         if(piece instanceof Bishop){
-            return isValidBishopMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference);
+            Bishop bishop = (Bishop) piece;
+
+            return bishop.isValidBishopMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference);
         }
 
         if(piece instanceof Queen){
-            return isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference) || isValidBishopMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference);
+            Rook auxRook = new Rook(side);
+            Bishop auxBishop = new Bishop(side);
+
+            return auxRook.isValidRookMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference) || 
+            auxBishop.isValidBishopMove(piece, side, fromRow, fromCol, toRow, toCol, boardStateReference);
         }
 
         if(piece instanceof King){
@@ -440,186 +446,6 @@ public class Board {
             }
         }else{
             return false;
-        }
-        return false;
-    }
-
-    private boolean isValidRookMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference){
-        //Check if target square is empty or has a friendly piece
-        if(boardStateReference[toRow][toCol].getPiece() != null &&
-        boardStateReference[toRow][toCol].getPiece().getSide() == side){
-            return false;
-        }
-
-        //Rook move is only valid if it was performed either on its row or column
-        //If it's both then it's invalid
-        if(fromRow != toRow && fromCol != toCol){
-            return false;
-        }
-
-        //Set looping parameters based on row or column move
-        int delta;
-        int start;
-        int end;
-
-        //Check for column move
-        if(fromRow == toRow){
-            //Check upwards move
-            if(fromCol > toCol){
-                delta = -1;
-            //Check downwards move
-            }else{
-                delta = 1;
-            }
-            start = fromCol + delta;
-            end = toCol;
-        //Check for row move
-        }else{
-            //Check leftwards move
-            if(fromRow > toRow){
-                delta = -1;
-            //Check rightwards move
-            }else{
-                delta = 1;
-            }
-            start = fromRow + delta;
-            end = toRow;
-        }
-
-        //Check if squares in the way of move are empty
-        for(int i = start; i != end; i += delta){
-            if((fromCol != toCol && boardStateReference[fromRow][i].getPiece() != null) ||
-            (fromRow != toRow && boardStateReference[i][fromCol].getPiece() != null)) {
-                return false;
-            }
-        }
-
-        //Check if it's a Rook to change its moved boolean which affects castling
-        //This check is done because the Queen also uses this function
-        if(piece instanceof Rook){
-            Rook rook = (Rook) piece;
-            if(!rook.isMoved()){
-                rook.setMoved(true);
-            }
-        }
-        return true;
-    }
-
-    private boolean isValidKnightMove(Knight knight, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference){
-        //Check squares difference in target move
-        int rowDifference = Math.abs(toRow - fromRow);
-        int colDifference = Math.abs(toCol - fromCol);
-
-        //Check if move was perfomed in the "L" or "2 - 1" fashion
-        if((rowDifference == 1 && colDifference == 2) || (rowDifference == 2 && colDifference == 1)){
-            //Check if target square is empty or has an opposing piece
-            if(boardStateReference[toRow][toCol].getPiece() == null || 
-            boardStateReference[toRow][toCol].getPiece().getSide() != side){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean isValidBishopMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference){
-        //Check left direction moves
-        if(toCol > fromCol){
-            //Check left-down moves
-            if(toRow > fromRow){
-                //Check if it was truly a diagonal move
-                if(toCol - fromCol != toRow - fromRow){
-                    return false;
-                }
-                //Check if squares in the way of move are empty
-                int rowIterator = fromRow+1;
-                int colIterator = fromCol+1;
-                while(rowIterator != toRow && colIterator != toCol){
-                    if(boardStateReference[rowIterator][colIterator].getPiece() != null){
-                        return false;
-                    }
-                    rowIterator++;
-                    colIterator++;
-                }
-                //Check if target square is empty or has an opposing piece
-                if(boardStateReference[toRow][toCol].getPiece() == null || 
-                boardStateReference[toRow][toCol].getPiece().getSide() != side){
-                    return true;
-                }else{
-                    return false;
-                }
-            //Check left-up moves
-            }else if(fromRow > toRow){
-                //Check if it was truly a diagonal move
-                if(toCol - fromCol != fromRow - toRow){
-                    return false;
-                }
-                //Check if squares in the way of move are empty
-                int rowIterator = fromRow-1;
-                int colIterator = fromCol+1;
-                while(rowIterator != toRow && colIterator != toCol){
-                    if(boardStateReference[rowIterator][colIterator].getPiece() != null){
-                        return false;
-                    }
-                    rowIterator--;
-                    colIterator++;
-                }
-                //Check if target square is empty or has an opposing piece
-                if(boardStateReference[toRow][toCol].getPiece() == null || 
-                boardStateReference[toRow][toCol].getPiece().getSide() != side){
-                    return true;
-                }else{
-                    return false;
-                }
-            }
-        //Check right direction moves
-        }else if(fromCol > toCol){
-            //Check right-down moves
-            if(toRow > fromRow){
-                //Check if it was truly a diagonal move
-                if(fromCol - toCol != toRow - fromRow){
-                    return false;
-                }
-                //Check if squares in the way of move are empty
-                int rowIterator = fromRow+1;
-                int colIterator = fromCol-1;
-                while(rowIterator != toRow && colIterator != toCol){
-                    if(boardStateReference[rowIterator][colIterator].getPiece() != null){
-                        return false;
-                    }
-                    rowIterator++;
-                    colIterator--;
-                }
-                //Check if target square is empty or has an opposing piece
-                if(boardStateReference[toRow][toCol].getPiece() == null || 
-                boardStateReference[toRow][toCol].getPiece().getSide() != side){
-                    return true;
-                }else{
-                    return false;
-                }
-            //Check right-up moves
-            }else if(fromRow > toRow){
-                //Check if it was truly a diagonal move
-                if(fromCol - toCol != fromRow - toRow){
-                    return false;
-                }
-                //Check if squares in the way of move are empty
-                int rowIterator = fromRow-1;
-                int colIterator = fromCol-1;
-                while(rowIterator != toRow && colIterator != toCol){
-                    if(boardStateReference[rowIterator][colIterator].getPiece() != null){
-                        return false;
-                    }
-                    rowIterator--;
-                    colIterator--;
-                }
-                //Check if target square is empty or has an opposing piece
-                if(boardStateReference[toRow][toCol].getPiece() == null || 
-                boardStateReference[toRow][toCol].getPiece().getSide() != side){
-                    return true;
-                }else{
-                    return false;
-                }
-            }
         }
         return false;
     }
@@ -889,7 +715,7 @@ public class Board {
             Rook rook = (Rook) piece;
             boolean currentMovedState = rook.isMoved();
 
-            possibleRookMovements(piece, side, row, col, boardStateReference);
+            rook.possibleRookMovements(piece, side, row, col, boardStateReference, this.whiteAttackingSquares, this.blackAttackingSquares);
 
             rook.setMoved(currentMovedState);
             return;
@@ -897,18 +723,23 @@ public class Board {
 
         if(piece instanceof Knight){
             Knight knight = (Knight) piece;
-            possibleKnightMovements(knight, side, row, col, boardStateReference);
+            knight.possibleKnightMovements(knight, side, row, col, boardStateReference, this.whiteAttackingSquares, this.blackAttackingSquares);
             return;
         }
 
         if(piece instanceof Bishop){
-            possibleBishopMovements(piece, side, row, col, boardStateReference);
+            Bishop bishop = (Bishop) piece;
+
+            bishop.possibleBishopMovements(piece, side, row, col, boardStateReference, this.whiteAttackingSquares, this.blackAttackingSquares);
             return;
         }
 
         if(piece instanceof Queen){
-            possibleRookMovements(piece, side, row, col, boardStateReference);
-            possibleBishopMovements(piece, side, row, col, boardStateReference);
+            Rook auxRook = new Rook(side);
+            Bishop auxBishop = new Bishop(side);
+
+            auxRook.possibleRookMovements(piece, side, row, col, boardStateReference, this.whiteAttackingSquares, this.blackAttackingSquares);
+            auxBishop.possibleBishopMovements(piece, side, row, col, boardStateReference, this.whiteAttackingSquares, this.blackAttackingSquares);
             return;
         }
 
@@ -961,114 +792,6 @@ public class Board {
                     }
                 }
             }
-        }
-    }
-
-    private void possibleRookMovements(Piece piece, char side, int row, int col, Cell[][] boardStateReference){
-        for(int i=0; i<8; i++){
-            if(i != row){
-                if(isValidCoordinate(i, col)){
-                    if(isValidRookMove(piece, side, row, col, i, col, boardStateReference)){
-                        if(side == 'W'){
-                            this.whiteAttackingSquares[i][col] = 1;
-                        }else{
-                            this.blackAttackingSquares[i][col] = 1;
-                        }
-                    }
-                }
-            }
-
-            if(i != col){
-                if(isValidCoordinate(row, i)){
-                    if(isValidRookMove(piece, side, row, col, row, i, boardStateReference)){
-                        if(side == 'W'){
-                            this.whiteAttackingSquares[row][i] = 1;
-                        }else{
-                            this.blackAttackingSquares[row][i] = 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private void possibleKnightMovements(Knight knight, char side, int row, int col, Cell[][] boardStateReference){
-        int[] possibleRows = {row + 2, row + 2, row - 2, row - 2, row + 1, row - 1, row + 1, row - 1};
-        int[] possibleCols = {col + 1, col - 1, col + 1, col - 1, col + 2, col + 2, col - 2, col - 2};
-
-        for(int i=0; i<possibleRows.length; i++){
-            if(isValidCoordinate(possibleRows[i], possibleCols[i])){
-                if(isValidKnightMove(knight, side, row, col, possibleRows[i], possibleCols[i], boardStateReference)){
-                    if(side == 'W'){
-                        this.whiteAttackingSquares[possibleRows[i]][possibleCols[i]] = 1;
-                    }else{
-                        this.blackAttackingSquares[possibleRows[i]][possibleCols[i]] = 1;
-                    }
-                }
-            }
-        }
-    }
-
-    private void possibleBishopMovements(Piece piece, char side, int row, int col, Cell[][] boardStateReference){
-        int auxCol = col+1;
-
-        for(int i=row+1; i<8; i++){
-            if(isValidCoordinate(i, auxCol)){
-                if(isValidBishopMove(piece, side, row, col, i, auxCol, boardStateReference)){
-                    if(side == 'W'){
-                        this.whiteAttackingSquares[i][auxCol] = 1;
-                    }else{
-                        this.blackAttackingSquares[i][auxCol] = 1;
-                    }
-                }
-            }
-            auxCol++;
-        }
-
-
-        auxCol = col+1;
-
-        for(int i=row-1; i>=0; i--){
-            if(isValidCoordinate(i, auxCol)){
-                if(isValidBishopMove(piece, side, row, col, i, auxCol, boardStateReference)){
-                    if(side == 'W'){
-                        this.whiteAttackingSquares[i][auxCol] = 1;
-                    }else{
-                        this.blackAttackingSquares[i][auxCol] = 1;
-                    }
-                }
-            }
-            auxCol++;
-        }
-
-        auxCol = col-1;
-
-        for(int i=row+1; i<8; i++){
-            if(isValidCoordinate(i, auxCol)){
-                if(isValidBishopMove(piece, side, row, col, i, auxCol, boardStateReference)){
-                    if(side == 'W'){
-                        this.whiteAttackingSquares[i][auxCol] = 1;
-                    }else{
-                        this.blackAttackingSquares[i][auxCol] = 1;
-                    }
-                }
-            }
-            auxCol--;
-        }
-
-        auxCol = col-1;
-
-        for(int i=row-1; i>=0; i--){
-            if(isValidCoordinate(i, auxCol)){
-                if(isValidBishopMove(piece, side, row, col, i, auxCol, boardStateReference)){
-                    if(side == 'W'){
-                        this.whiteAttackingSquares[i][auxCol] = 1;
-                    }else{
-                        this.blackAttackingSquares[i][auxCol] = 1;
-                    }
-                }
-            }
-            auxCol--;
         }
     }
 
