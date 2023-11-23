@@ -169,6 +169,7 @@ public class ChessBoard extends JFrame {
             }
 
             ImageIcon icon = new ImageIcon(imagePath);
+            icon = new ImageIcon(icon.getImage().getScaledInstance(cellPanels[0][0].getWidth(), cellPanels[0][0].getHeight(), Image.SCALE_SMOOTH));
             promotionButton.setIcon(icon);
 
             //Add ActionListener to handle button click
@@ -227,7 +228,9 @@ public class ChessBoard extends JFrame {
 
             //Add images of the respective queen and king
             ImageIcon queenIcon = new ImageIcon(imagePath);
+            queenIcon = new ImageIcon(queenIcon.getImage().getScaledInstance(cellPanels[0][0].getWidth(), cellPanels[0][0].getHeight(), Image.SCALE_SMOOTH));
             ImageIcon kingIcon = new ImageIcon(imagePath.replace("Q", "K"));
+            kingIcon = new ImageIcon(kingIcon.getImage().getScaledInstance(cellPanels[0][0].getWidth(), cellPanels[0][0].getHeight(), Image.SCALE_SMOOTH));
 
             JLabel queenLabel = new JLabel(queenIcon);
             JLabel kingLabel = new JLabel(kingIcon);
@@ -258,6 +261,8 @@ public class ChessBoard extends JFrame {
                 if (piece != null) {
                     String pieceLabel = piece.getLabel();
                     ImageIcon icon = new ImageIcon("images/" + pieceLabel + ".png");
+                    //Set the size of the ImageIcon to match the cell size
+                    icon = new ImageIcon(icon.getImage().getScaledInstance(cellPanels[i][j].getWidth(), cellPanels[i][j].getHeight(), Image.SCALE_SMOOTH));
                     label.setIcon(icon);
                 }
 
