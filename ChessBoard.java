@@ -162,7 +162,7 @@ public class ChessBoard extends JFrame {
             JButton promotionButton  = new JButton();
 
             String imagePath;
-            if(!board.getCurrentTurn()){
+            if(board.getCurrentTurn() == Turn.BLACK){
                 imagePath = "images/" + whitePiecelabels[i-1] + ".png";
             }else{
                 imagePath = "images/" + blackPiecelabels[i-1] + ".png";

@@ -6,7 +6,6 @@ public class Board {
     private boolean enPassant;
     private int enPassantRow;
     private int enPassantCol;
-    private enum PawnPossibilityState {MOVING, POSSIBLE}
     private PawnPossibilityState currentPawnPossibilityState;
     private boolean castle;
     private boolean promotion;
@@ -23,31 +22,7 @@ public class Board {
     private int blackKingRow;
     private int blackKingCol;
     private boolean gameRunning;
-    private enum Turn {WHITE, BLACK}
     private Turn currentTurn;
-
-    public boolean isGameRunning() {
-        return gameRunning;
-    }
-
-    public boolean isWhiteKingMated() {
-        return whiteKingMated;
-    }
-
-    public boolean isBlackKingMated() {
-        return blackKingMated;
-    }
-
-    public boolean isPromotion() {
-        return promotion;
-    }
-
-    public boolean getCurrentTurn() {
-        if(this.currentTurn == Turn.WHITE){
-            return true;
-        }
-        return false;
-    }
 
     public Board() {
         cells = new Cell[8][8];
@@ -116,6 +91,90 @@ public class Board {
 
     public Cell[][] getCurrentBoardState() {
         return cells;
+    }
+
+    public boolean isGameRunning() {
+        return gameRunning;
+    }
+
+    public boolean isWhiteKingMated() {
+        return whiteKingMated;
+    }
+
+    public boolean isBlackKingMated() {
+        return blackKingMated;
+    }
+
+    public boolean isPromotion() {
+        return promotion;
+    }
+
+    public Turn getCurrentTurn() {
+        return this.currentTurn;
+    }
+
+    public void setEnPassant(boolean enPassant) {
+        this.enPassant = enPassant;
+    }
+
+    public void setEnPassantRow(int enPassantRow) {
+        this.enPassantRow = enPassantRow;
+    }
+
+    public void setEnPassantCol(int enPassantCol) {
+        this.enPassantCol = enPassantCol;
+    }
+
+    public void setCastle(boolean castle) {
+        this.castle = castle;
+    }
+
+    public void setCastleFromRow(int castleFromRow) {
+        this.castleFromRow = castleFromRow;
+    }
+
+    public void setCastleFromCol(int castleFromCol) {
+        this.castleFromCol = castleFromCol;
+    }
+
+    public void setCastleToRow(int castleToRow) {
+        this.castleToRow = castleToRow;
+    }
+
+    public void setCastleToCol(int castleToCol) {
+        this.castleToCol = castleToCol;
+    }
+
+    public int getWhiteKingRow() {
+        return whiteKingRow;
+    }
+
+    public void setWhiteKingRow(int whiteKingRow) {
+        this.whiteKingRow = whiteKingRow;
+    }
+
+    public int getWhiteKingCol() {
+        return whiteKingCol;
+    }
+
+    public void setWhiteKingCol(int whiteKingCol) {
+        this.whiteKingCol = whiteKingCol;
+    }
+
+    public int getBlackKingRow() {
+        return blackKingRow;
+    }
+
+    public void setBlackKingRow(int blackKingRow) {
+        this.blackKingRow = blackKingRow;
+    }
+    
+    public int getBlackKingCol() {
+        return blackKingCol;
+    }
+
+    public void setBlackKingCol(int blackKingCol) {
+        this.blackKingCol = blackKingCol;
     }
 
     public boolean sendMove(int fromRow, int fromCol, int toRow, int toCol){
@@ -297,7 +356,7 @@ public class Board {
         if(piece instanceof Pawn){
             Pawn pawn = (Pawn) piece;
 
-            if(isValidPawnMove(pawn, side, fromRow, fromCol, toRow, toCol, boardStateReference)){
+            if(pawn.isValidPawnMove(pawn, side, fromRow, fromCol, toRow, toCol, boardStateReference, this.currentPawnPossibilityState, this)){
                 if((pawn.getSide() == 'W' && toRow == 0) || (pawn.getSide() == 'B' && toRow == 7)){
                     this.promotion = true;
                 }
@@ -340,293 +399,10 @@ public class Board {
         if(piece instanceof King){
             King king = (King) piece;
 
-            return isValidKingMove(king, side, fromRow, fromCol, toRow, toCol, boardStateReference);
+            return king.isValidKingMove(king, side, fromRow, fromCol, toRow, toCol, boardStateReference, this.whiteAttackingSquares, this.blackAttackingSquares, this);
         }
         
         return false;
-    }
-
-    private boolean isValidPawnMove(Pawn pawn, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference){
-        //Check for single move
-        if((side == 'W' && fromRow - toRow == 1) || (side == 'B' && toRow - fromRow == 1)){
-            //Check forward move
-            if(toCol - fromCol == 0){
-                //Check if there's a piece in the way in forward move
-                if(boardStateReference[toRow][toCol].getPiece() == null){
-                    //Override that's only used for filling in attacking grid,
-                    //since pawns can't capture going forwards this returns false
-                    if(this.currentPawnPossibilityState == PawnPossibilityState.POSSIBLE){
-                        return false;
-                    }
-
-                    if(pawn.isDoubleMoveLastTurn() == true){
-                        pawn.setDoubleMoveLastTurn(false);
-                    }
-                    if(!pawn.isMoved()){
-                        pawn.setMoved(true);
-                    }
-                    return true;
-                }else{
-                    return false;
-                }
-            }
-            //Check diagonal move
-            if(toCol - fromCol == 1 || fromCol - toCol == 1){
-                //Override that's only used for filling in attacking grid
-                if(this.currentPawnPossibilityState == PawnPossibilityState.POSSIBLE){
-                    return true;
-                }
-
-                //Check if there's a piece to capture in diagonal move
-                if(boardStateReference[toRow][toCol].getPiece() == null){
-                    //Check for En Passant
-                    if(boardStateReference[fromRow][toCol].getPiece() == null ||
-                    !(boardStateReference[fromRow][toCol].getPiece() instanceof Pawn) ||
-                    (side == 'W' && boardStateReference[fromRow][toCol].getPiece().getSide() == 'W') ||
-                    (side == 'B' && boardStateReference[fromRow][toCol].getPiece().getSide() == 'B')){
-                        return false;
-                    }else{
-                        Pawn enemyPawn = (Pawn) boardStateReference[fromRow][toCol].getPiece();
-                        if(enemyPawn.isDoubleMoveLastTurn()){
-                            if(pawn.isDoubleMoveLastTurn() == true){
-                                pawn.setDoubleMoveLastTurn(false);
-                            }
-                            if(!pawn.isMoved()){
-                                pawn.setMoved(true);
-                            }
-                            this.enPassant = true;
-                            if(side == 'W'){
-                                this.enPassantRow = toRow + 1;
-                            }else{
-                                this.enPassantRow = toRow - 1;
-                            }
-                            this.enPassantCol = toCol;
-                            return true;
-                        }else{
-                            return false;
-                        }
-                    }
-                }else{
-                    if(boardStateReference[toRow][toCol].getPiece().getSide() == side){
-                        return false;
-                    }else{
-                        if(pawn.isDoubleMoveLastTurn() == true){
-                            pawn.setDoubleMoveLastTurn(false);
-                        }
-                        if(!pawn.isMoved()){
-                            pawn.setMoved(true);
-                        }
-                        return true;
-                    }
-                }
-            }
-        //Check for double move    
-        }else if((side == 'W' && fromRow - toRow == 2) || (side == 'B' && toRow - fromRow == 2)){
-            //Override that's only used for filling in attacking grid,
-            //since pawns can't capture going forwards this returns false
-            if(this.currentPawnPossibilityState == PawnPossibilityState.POSSIBLE){
-                return false;
-            }
-
-            if(toCol - fromCol == 0){
-                if(!pawn.isMoved()){
-                    //Check if there's a piece in the way in double move
-                    if(boardStateReference[toRow][toCol].getPiece() == null){
-                        pawn.setMoved(true);
-                        pawn.setDoubleMoveLastTurn(true);
-                        return true;
-                    }else{
-                        return false;
-                    }
-                }else{
-                    return false;
-                }
-            }else{
-                return false;
-            }
-        }else{
-            return false;
-        }
-        return false;
-    }
-
-    private boolean isValidKingMove(King king, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference){
-        //Check for castling
-        if(!king.isMoved()){
-            //Check if the move is within the same row
-            if(fromRow == toRow){
-                //Check for King side castling
-                if(toCol - fromCol == 2){
-                    //Check King's color performing the castle move, in this case White
-                    if(side == 'W'){
-                        //Check if the squares in the way are empty and aren't being attacked by opposing pieces
-                        if(boardStateReference[fromRow][toCol].getPiece() == null && boardStateReference[fromRow][toCol-1].getPiece() == null && this.blackAttackingSquares[fromRow][toCol] == 0 && this.blackAttackingSquares[fromRow][toCol-1] == 0){
-                            //Check if the rightmost piece is actually a Rook
-                            if(boardStateReference[fromRow][toCol+1].getPiece() instanceof Rook){
-                                //Check if that rook hasn't moved yet
-                                Rook rightSideRook = (Rook) boardStateReference[fromRow][toCol+1].getPiece();
-                                if(!rightSideRook.isMoved()){
-                                    king.setMoved(true);
-                                    this.castleFromCol = toCol + 1;
-                                    this.castleFromRow = fromRow;
-                                    this.castleToCol = toCol - 1;
-                                    this.castleToRow = fromRow;
-                                    this.castle = true;
-                                    this.whiteKingRow = toRow;
-                                    this.whiteKingCol = toCol;
-                                    
-                                    return true;
-                                }else{
-                                    return false;
-                                }
-                            }
-                        }
-                    //Check King's color performing the castle move, in this case Black
-                    }else{
-                        //Check if the squares in the way are empty and aren't being attacked by opposing pieces
-                        if(boardStateReference[fromRow][toCol].getPiece() == null && boardStateReference[fromRow][toCol-1].getPiece() == null && this.whiteAttackingSquares[fromRow][toCol] == 0 && this.whiteAttackingSquares[fromRow][toCol-1] == 0){
-                            //Check if the rightmost piece is actually a Rook
-                            if(boardStateReference[fromRow][toCol+1].getPiece() instanceof Rook){
-                                //Check if that rook hasn't moved yet
-                                Rook rightSideRook = (Rook) boardStateReference[fromRow][toCol+1].getPiece();
-                                if(!rightSideRook.isMoved()){
-                                    king.setMoved(true);
-                                    this.castleFromCol = toCol + 1;
-                                    this.castleFromRow = fromRow;
-                                    this.castleToCol = toCol - 1;
-                                    this.castleToRow = fromRow;
-                                    this.castle = true;
-                                    this.blackKingRow = toRow;
-                                    this.blackKingCol = toCol;
-    
-                                    return true;
-                                }else{
-                                    return false;
-                                }
-                            }
-                        }
-                    }
-                //Check for Queen side castling
-                }else if(fromCol - toCol == 2){
-                    //Check King's color performing the castle move, in this case White
-                    if(side == 'W'){
-                        //Check if the squares in the way are empty and aren't being attacked by opposing pieces, since this is Queen side, there's an additional square to check
-                        if(boardStateReference[fromRow][toCol].getPiece() == null && boardStateReference[fromRow][toCol+1].getPiece() == null && boardStateReference[fromRow][toCol-1].getPiece() == null && this.blackAttackingSquares[fromRow][toCol] == 0 && this.blackAttackingSquares[fromRow][toCol+1] == 0 && this.blackAttackingSquares[fromRow][toCol-1] == 0){
-                            //Check if the leftmost piece is actually a Rook
-                            if(boardStateReference[fromRow][toCol-2].getPiece() instanceof Rook){
-                                //Check if that rook hasn't moved yet
-                                Rook leftSideRook = (Rook) boardStateReference[fromRow][toCol-2].getPiece();
-                                if(!leftSideRook.isMoved()){
-                                    king.setMoved(true);
-                                    this.castleFromCol = toCol - 2;
-                                    this.castleFromRow = fromRow;
-                                    this.castleToCol = toCol + 1;
-                                    this.castleToRow = fromRow;
-                                    this.castle = true;
-                                    this.whiteKingRow = toRow;
-                                    this.whiteKingCol = toCol;
-    
-                                    return true;
-                                }else{
-                                    return false;
-                                }
-                            }
-                        }
-                    //Check King's color performing the castle move, in this case Black
-                    }else{
-                        //Check if the squares in the way are empty and aren't being attacked by opposing pieces, since this is Queen side, there's an additional square to check
-                        if(boardStateReference[fromRow][toCol].getPiece() == null && boardStateReference[fromRow][toCol+1].getPiece() == null && boardStateReference[fromRow][toCol-1].getPiece() == null && this.whiteAttackingSquares[fromRow][toCol] == 0 && this.whiteAttackingSquares[fromRow][toCol+1] == 0 && this.whiteAttackingSquares[fromRow][toCol-1] == 0){
-                            //Check if the leftmost piece is actually a Rook
-                            if(boardStateReference[fromRow][toCol-2].getPiece() instanceof Rook){
-                                //Check if that rook hasn't moved yet
-                                Rook leftSideRook = (Rook) boardStateReference[fromRow][toCol-2].getPiece();
-                                if(!leftSideRook.isMoved()){
-                                    king.setMoved(true);
-                                    this.castleFromCol = toCol - 2;
-                                    this.castleFromRow = fromRow;
-                                    this.castleToCol = toCol + 1;
-                                    this.castleToRow = fromRow;
-                                    this.castle = true;
-                                    this.blackKingRow = toRow;
-                                    this.blackKingCol = toCol;
-    
-                                    return true;
-                                }else{
-                                    return false;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        //Check for regular King moves
-        //Check if King moved more than one square in any direction
-        if(Math.abs(toCol - fromCol) > 1 || Math.abs(toRow - fromRow) > 1){
-            return false;
-        //Check if target square is empty
-        }else if(boardStateReference[toRow][toCol].getPiece() == null){
-            //Check King's color performing the move, in this case White
-            if(side == 'W'){
-                //Check if that square isn't attacked by an opposing piece
-                if(this.blackAttackingSquares[toRow][toCol] == 0){
-                    if(!king.isMoved()){
-                        king.setMoved(true);
-                    }
-                    this.whiteKingRow = toRow;
-                    this.whiteKingCol = toCol;
-                    return true;
-                }else{
-                    return false;
-                }
-            //Check King's color performing the move, in this case Black
-            }else{
-                //Check if that square isn't attacked by an opposing piece
-                if(this.whiteAttackingSquares[toRow][toCol] == 0){
-                    if(!king.isMoved()){
-                        king.setMoved(true);
-                    }
-                    this.blackKingRow = toRow;
-                    this.blackKingCol = toCol;
-                    return true;
-                }else{
-                    return false;
-                }
-            }
-        //Check if square isn't occupied by friendly piece
-        }else if(boardStateReference[toRow][toCol].getPiece().getSide() == side){
-            return false;
-        //Check edge case where King captures an opposing piece
-        }else{
-            int currentKingRow;
-            int currentKingCol;
-
-            if(side == 'W'){
-                currentKingRow = this.whiteKingRow;
-                currentKingCol = this.whiteKingCol;
-            }else{
-                currentKingRow = this.blackKingRow;
-                currentKingCol = this.blackKingCol;
-            }
-            //If the capture is safe, then it's allowed and actually performed
-            if(moveGetsOutofCheck(king, side, fromRow, fromCol, toRow, toCol, currentKingRow, currentKingCol, boardStateReference)){
-                if(!king.isMoved()){
-                    king.setMoved(true);
-                }
-                if(side == 'W'){
-                    this.whiteKingRow = toRow;
-                    this.whiteKingCol = toCol;
-                }else{
-                    this.blackKingRow = toRow;
-                    this.blackKingCol = toCol;
-                }
-    
-                return true;
-            }else{
-                return false;
-            }
-        }
     }
 
     private void handleEnPassant(Cell[][] boardStateReference){
@@ -703,7 +479,7 @@ public class Board {
             boolean currentMovedState = pawn.isMoved();
             boolean currentDoubleMoveLastTurnState = pawn.isDoubleMoveLastTurn();
 
-            possiblePawnMovements(pawn, side, row, col, boardStateReference);
+            pawn.possiblePawnMovements(pawn, side, row, col, boardStateReference, this.currentPawnPossibilityState, this, this.whiteAttackingSquares, this.blackAttackingSquares);
 
             pawn.setMoved(currentMovedState);
             pawn.setDoubleMoveLastTurn(currentDoubleMoveLastTurnState);
@@ -752,7 +528,8 @@ public class Board {
             int currentBlackKingRow = this.blackKingRow;
             int currentBlackKingCol = this.blackKingCol;
 
-            possibleKingMovements(king, side, row, col, (this.whiteKingChecked || this.blackKingChecked), boardStateReference);
+            king.possibleKingMovements(king, side, row, col, (this.whiteKingChecked || this.blackKingChecked), 
+            boardStateReference, this.whiteAttackingSquares, this.blackAttackingSquares, this);
 
             king.setMoved(currentMovedState);
             this.castle = currentCastleState;
@@ -761,70 +538,6 @@ public class Board {
             this.blackKingRow = currentBlackKingRow;
             this.blackKingCol = currentBlackKingCol;
             return;
-        }
-    }
-
-    private void possiblePawnMovements(Pawn pawn, char side, int row, int col, Cell[][] boardStateReference){
-        int delta;
-        if(side == 'W'){
-            delta = -1;
-        }else{
-            delta = 1;
-        }
-
-        int[] possibleRows = {row + (delta * 2), row + delta, row + delta, row + delta};
-        int[] possibleCols = {col, col, col - 1, col + 1};
-
-        int start;
-        if(!pawn.isMoved()){
-            start = 0;
-        }else{
-            start = 1;
-        }
-
-        for(int i=start; i<possibleRows.length; i++){
-            if(isValidCoordinate(possibleRows[i], possibleCols[i])){
-                if(isValidPawnMove(pawn, side, row, col, possibleRows[i], possibleCols[i], boardStateReference)){
-                    if(side == 'W'){
-                        this.whiteAttackingSquares[possibleRows[i]][possibleCols[i]] = 1;
-                    }else{
-                        this.blackAttackingSquares[possibleRows[i]][possibleCols[i]] = 1;
-                    }
-                }
-            }
-        }
-    }
-
-    private void possibleKingMovements(King king, char side, int row, int col, boolean check, Cell[][] boardStateReference){
-        int[] possibleRows = {row + 1, row + 1, row + 1, row - 1, row - 1, row - 1, row, row};
-        int[] possibleCols = {col, col + 1, col - 1, col, col + 1, col - 1, col + 1, col - 1};
-
-        if(!check){
-            if(king.isMoved() == false){
-                int delta = -2;
-                for(int i=0; i<2; i++){
-                    if(isValidKingMove(king, side, row, col, row, col+delta, boardStateReference)){
-                        if(side == 'W'){
-                            this.whiteAttackingSquares[row][col+delta] = 1;
-                        }else{
-                            this.blackAttackingSquares[row][col+delta] = 1;
-                        }
-                    }
-                    delta += 4;
-                }
-            }
-        }
-
-        for(int i=0; i<possibleRows.length; i++){
-            if(isValidCoordinate(possibleRows[i], possibleCols[i])){
-                if(isValidKingMove(king, side, row, col, possibleRows[i], possibleCols[i], boardStateReference)){
-                    if(side == 'W'){
-                        this.whiteAttackingSquares[possibleRows[i]][possibleCols[i]] = 1;
-                    }else{
-                        this.blackAttackingSquares[possibleRows[i]][possibleCols[i]] = 1;
-                    }
-                }
-            }
         }
     }
 
@@ -962,7 +675,7 @@ public class Board {
         return false;
     }
 
-    private boolean moveGetsOutofCheck(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, int previousKingRow, int previousKingCol, Cell[][] boardStateReference){
+    public boolean moveGetsOutofCheck(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, int previousKingRow, int previousKingCol, Cell[][] boardStateReference){
         boolean result = false;
 
         int[][] whiteAttacksBackUp = copyAttackState(this.whiteAttackingSquares);
