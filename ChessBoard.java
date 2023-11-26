@@ -56,6 +56,7 @@ public class ChessBoard extends JFrame {
 
         add(mainPanel);
         setVisible(true);
+        setLocationRelativeTo(null);
         updateBoard();
     }
 
@@ -195,6 +196,7 @@ public class ChessBoard extends JFrame {
 
         //Set the frame to be visible
         promotionFrame.setVisible(true);
+        promotionFrame.setLocationRelativeTo(null);
     }
 
     //Method to check for game over and display the result
@@ -243,6 +245,7 @@ public class ChessBoard extends JFrame {
 
             //Set the frame to be visible
             resultFrame.setVisible(true);
+            resultFrame.setLocationRelativeTo(null);
         }
     }
 
