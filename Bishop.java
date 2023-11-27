@@ -8,107 +8,55 @@ public class Bishop extends Piece {
         }
     }
 
-    public boolean isValidBishopMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference){
+    public boolean isValidBishopMove(Piece piece, char side, int fromRow, int fromCol, int toRow, int toCol, Cell[][] boardStateReference) {
+        //Check if target square has an opposing piece
+        if(boardStateReference[toRow][toCol].getPiece() != null && 
+        boardStateReference[toRow][toCol].getPiece().getSide() == side){
+            return false;
+        }
+        
+        //Check if it was truly a diagonal move
+        if (Math.abs(toRow - fromRow) != Math.abs(toCol - fromCol)) {
+            return false;
+        }
+
+        int rowIncrement;
+        int colIncrement;
+
+        //Check downwards moves
+        if(toRow > fromRow){
+            rowIncrement = 1;
+        //Check upwards moves
+        }else{
+            rowIncrement = -1;
+        }
+
         //Check left direction moves
         if(toCol > fromCol){
-            //Check left-down moves
-            if(toRow > fromRow){
-                //Check if it was truly a diagonal move
-                if(toCol - fromCol != toRow - fromRow){
-                    return false;
-                }
-                //Check if squares in the way of move are empty
-                int rowIterator = fromRow+1;
-                int colIterator = fromCol+1;
-                while(rowIterator != toRow && colIterator != toCol){
-                    if(boardStateReference[rowIterator][colIterator].getPiece() != null){
-                        return false;
-                    }
-                    rowIterator++;
-                    colIterator++;
-                }
-                //Check if target square is empty or has an opposing piece
-                if(boardStateReference[toRow][toCol].getPiece() == null || 
-                boardStateReference[toRow][toCol].getPiece().getSide() != side){
-                    return true;
-                }else{
-                    return false;
-                }
-            //Check left-up moves
-            }else if(fromRow > toRow){
-                //Check if it was truly a diagonal move
-                if(toCol - fromCol != fromRow - toRow){
-                    return false;
-                }
-                //Check if squares in the way of move are empty
-                int rowIterator = fromRow-1;
-                int colIterator = fromCol+1;
-                while(rowIterator != toRow && colIterator != toCol){
-                    if(boardStateReference[rowIterator][colIterator].getPiece() != null){
-                        return false;
-                    }
-                    rowIterator--;
-                    colIterator++;
-                }
-                //Check if target square is empty or has an opposing piece
-                if(boardStateReference[toRow][toCol].getPiece() == null || 
-                boardStateReference[toRow][toCol].getPiece().getSide() != side){
-                    return true;
-                }else{
-                    return false;
-                }
-            }
+            colIncrement = 1;
         //Check right direction moves
-        }else if(fromCol > toCol){
-            //Check right-down moves
-            if(toRow > fromRow){
-                //Check if it was truly a diagonal move
-                if(fromCol - toCol != toRow - fromRow){
-                    return false;
-                }
-                //Check if squares in the way of move are empty
-                int rowIterator = fromRow+1;
-                int colIterator = fromCol-1;
-                while(rowIterator != toRow && colIterator != toCol){
-                    if(boardStateReference[rowIterator][colIterator].getPiece() != null){
-                        return false;
-                    }
-                    rowIterator++;
-                    colIterator--;
-                }
-                //Check if target square is empty or has an opposing piece
-                if(boardStateReference[toRow][toCol].getPiece() == null || 
-                boardStateReference[toRow][toCol].getPiece().getSide() != side){
-                    return true;
-                }else{
-                    return false;
-                }
-            //Check right-up moves
-            }else if(fromRow > toRow){
-                //Check if it was truly a diagonal move
-                if(fromCol - toCol != fromRow - toRow){
-                    return false;
-                }
-                //Check if squares in the way of move are empty
-                int rowIterator = fromRow-1;
-                int colIterator = fromCol-1;
-                while(rowIterator != toRow && colIterator != toCol){
-                    if(boardStateReference[rowIterator][colIterator].getPiece() != null){
-                        return false;
-                    }
-                    rowIterator--;
-                    colIterator--;
-                }
-                //Check if target square is empty or has an opposing piece
-                if(boardStateReference[toRow][toCol].getPiece() == null || 
-                boardStateReference[toRow][toCol].getPiece().getSide() != side){
-                    return true;
-                }else{
-                    return false;
-                }
-            }
+        }else{
+            colIncrement = -1;
         }
-        return false;
+
+        //Iterators start at the piece location
+        int rowIterator = fromRow;
+        int colIterator = fromCol;
+        //First increment is done so the piece square is not checked
+        rowIterator += rowIncrement;
+        colIterator += colIncrement;
+    
+        //Check if squares in the way of move are empty
+        while(rowIterator != toRow && colIterator != toCol) {
+            if (boardStateReference[rowIterator][colIterator].getPiece() != null) {
+                return false;
+            }
+
+            rowIterator += rowIncrement;
+            colIterator += colIncrement;
+        }
+
+        return true;
     }
 
     public void possibleBishopMovements(Piece piece, char side, int row, int col, Cell[][] boardStateReference, int[][] whiteAttackingSquares, int[][] blackAttackingSquares){
