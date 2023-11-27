@@ -14,7 +14,7 @@ public class ChessGameLauncher {
         });
     }
 
-    private static void openLauncherWindow() {
+    public static void openLauncherWindow() {
         JFrame launcherFrame = new JFrame("Chess Game Launcher");
         launcherFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         launcherFrame.setSize(800, 800);

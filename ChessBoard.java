@@ -240,6 +240,38 @@ public class ChessBoard extends JFrame {
             panel.add(queenLabel, BorderLayout.WEST);
             panel.add(kingLabel, BorderLayout.EAST);
 
+            //Add buttons for "Return to main menu" and "Rematch"
+            JPanel buttonPanel = new JPanel(new FlowLayout());
+            JButton returnButton = new JButton("Return to main menu");
+            JButton rematchButton = new JButton("Rematch");
+
+            returnButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    resultFrame.dispose();
+                    dispose();
+                    
+                    board = new Board();
+                    updateBoard();
+
+                    ChessGameLauncher.openLauncherWindow();
+                }
+            });
+
+            rematchButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    resultFrame.dispose();
+                    board = new Board();
+                    updateBoard();
+                }
+            });
+
+            buttonPanel.add(returnButton);
+            buttonPanel.add(rematchButton);
+
+            panel.add(buttonPanel, BorderLayout.SOUTH);
+
             //Add the panel to the frame
             resultFrame.add(panel);
 
