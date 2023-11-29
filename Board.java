@@ -1,3 +1,6 @@
+import java.util.ArrayList;
+import java.util.Random;
+
 public class Board {
     private Cell[][] cells;
     private int[][] whiteAttackingSquares;
@@ -23,6 +26,9 @@ public class Board {
     private int blackKingCol;
     private boolean gameRunning;
     private Turn currentTurn;
+    private AISide AIOpponentSide;
+    private boolean AIMated;
+    private ArrayList<PossibleMove> possibleAIMoves;
 
     public Board() {
         cells = new Cell[8][8];
@@ -44,6 +50,9 @@ public class Board {
         this.blackKingCol = 4;
         this.gameRunning = true;
         this.enPassant = false;
+        this.possibleAIMoves = new ArrayList<>();
+        this.AIOpponentSide = AISide.BLACK;
+        this.AIMated = false;
     }
 
     private void initializeBoard() {
@@ -176,6 +185,128 @@ public class Board {
     public void setBlackKingCol(int blackKingCol) {
         this.blackKingCol = blackKingCol;
     }
+
+    public void setAIOpponentSide(AISide AIOpponentSide) {
+        this.AIOpponentSide = AIOpponentSide;
+    }
+
+    public boolean getAIMated() {
+        return this.AIMated;
+    }
+
+    public void calculateAIMove(){
+        this.possibleAIMoves.clear();
+
+        Cell[][] boardStateReference = copyBoardState(this.cells);
+
+        char side;
+
+        if(this.AIOpponentSide == AISide.WHITE){
+            side = 'W';
+        }else{
+            side = 'B';
+        }
+
+        int[][] opposingAttacks;
+        int[][] currentSideAttacks;
+
+        if(side == 'W'){
+            opposingAttacks = copyAttackState(this.blackAttackingSquares);
+            currentSideAttacks = copyAttackState(this.whiteAttackingSquares);
+        }else{
+            opposingAttacks = copyAttackState(this.whiteAttackingSquares);
+            currentSideAttacks = copyAttackState(this.blackAttackingSquares);
+        }
+
+        clearAttackingGrid('W');
+        clearAttackingGrid('B');
+
+        for(int i=0; i<8; i++){
+            for(int j=0; j<8; j++){
+                if(boardStateReference[i][j].getPiece() != null){
+                    if(boardStateReference[i][j].getPiece().getSide() == side){
+                        checkPossibleMovements(boardStateReference[i][j].getPiece(), side, i, j, boardStateReference);
+
+                        for(int k=0; k<8; k++){
+                            for(int l=0; l<8; l++){
+
+                                if(side == 'W'){
+                                    if(this.whiteAttackingSquares[k][l] == 1){
+                                        this.possibleAIMoves.add(new PossibleMove(i, j, k, l));
+                                    }
+                                }else{
+                                    if(this.blackAttackingSquares[k][l] == 1){
+                                        this.possibleAIMoves.add(new PossibleMove(i, j, k, l));
+                                    }
+                                }
+                            }    
+                        }
+
+                        if(side == 'W'){
+                            clearAttackingGrid('W');
+                        }else{
+                            clearAttackingGrid('B');
+                        }
+
+                    }
+                }
+            }
+        }
+
+        if(side == 'W'){
+            this.whiteAttackingSquares = currentSideAttacks;
+            this.blackAttackingSquares = opposingAttacks;
+        }else{
+            this.whiteAttackingSquares = opposingAttacks;
+            this.blackAttackingSquares = currentSideAttacks;
+        }
+
+        int upperBound = this.possibleAIMoves.size();
+
+        /* boolean checked = false;
+        int AIKingRow;
+        int AIKingCol;
+
+        if(this.AIOpponentSide == AISide.WHITE){
+            if(this.whiteKingChecked == true){
+                checked = true;
+                AIKingRow = this.whiteKingRow;
+                AIKingCol = this.whiteKingCol;
+            }
+        }else{
+            if(this.blackKingChecked == true){
+                checked = true;
+                AIKingRow = this.blackKingRow;
+                AIKingCol = this.blackKingCol;
+            }
+        }
+
+        boolean mate = false;
+        Piece AIKing = this.cells[AIKingRow][AIKingCol].getPiece();
+        checkIfAnyKingAttacked(AIKing, side, boardStateReference); */
+        
+        boolean validMove = false;
+        
+        while(!validMove){
+            Random random = new Random();
+            int randomIndex = random.nextInt(upperBound);
+    
+            int fromRow = this.possibleAIMoves.get(randomIndex).getFromRow();
+            int fromCol = this.possibleAIMoves.get(randomIndex).getFromCol();
+            int toRow = this.possibleAIMoves.get(randomIndex).getToRow();
+            int toCol = this.possibleAIMoves.get(randomIndex).getToCol();
+    
+            validMove = move(fromRow, fromCol, toRow, toCol);
+        }
+
+        if(currentTurn == Turn.WHITE){
+            currentTurn = Turn.BLACK;
+        }else{
+            currentTurn = Turn.WHITE;
+        }
+
+    }
+
 
     public boolean sendMove(int fromRow, int fromCol, int toRow, int toCol){
         boolean validMove = false;
@@ -329,6 +460,9 @@ public class Board {
                 if(!anyMovesLeft('B', boardStateReference)){
                     this.blackKingMated = true;
                     System.out.println("Check mate!");
+                    if(this.AIOpponentSide == AISide.BLACK){
+                        this.AIMated = true;
+                    }
                 }
             }
         }else{
@@ -339,6 +473,9 @@ public class Board {
                 if(!anyMovesLeft('W', boardStateReference)){
                     this.whiteKingMated = true;
                     System.out.println("Check mate!");
+                    if(this.AIOpponentSide == AISide.WHITE){
+                        this.AIMated = true;
+                    }
                 }
             }
         }

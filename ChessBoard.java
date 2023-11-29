@@ -103,6 +103,11 @@ public class ChessBoard extends JFrame {
                         openPromotionWindow(logicRow, col);
                     }
 
+                    if(!board.getAIMated()){
+                        board.calculateAIMove();
+                        updateBoard();
+                    }
+
                 }else{
                     JOptionPane.showMessageDialog(this, "Invalid move", "Error", JOptionPane.ERROR_MESSAGE);
                 }
