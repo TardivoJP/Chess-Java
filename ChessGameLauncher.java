@@ -52,8 +52,8 @@ public class ChessGameLauncher {
         centeringPanel.add(humanVsHumanButton, gbc);
 
         //Add "Human vs AI" button below the "Human vs Human" button
-        JButton humanVsAIButton = new JButton("Human vs AI");
-        humanVsAIButton.addActionListener(new ActionListener() {
+        JButton humanVsWhiteAIButton = new JButton("Human vs White AI");
+        humanVsWhiteAIButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 //Close the launcher window
@@ -65,9 +65,27 @@ public class ChessGameLauncher {
         });
 
         //Set preferred size for the button and add it to the panel
-        humanVsAIButton.setPreferredSize(new Dimension(150, 50));
+        humanVsWhiteAIButton.setPreferredSize(new Dimension(150, 50));
         gbc.gridy = 2;
-        centeringPanel.add(humanVsAIButton, gbc);
+        centeringPanel.add(humanVsWhiteAIButton, gbc);
+
+        //Add "Human vs AI" button below the "Human vs Human" button
+        JButton humanVsBlackAIButton = new JButton("Human vs Black AI");
+        humanVsBlackAIButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                //Close the launcher window
+                launcherFrame.dispose();
+
+                //Start the ChessBoard class
+                startChessBoard();
+            }
+        });
+
+        //Set preferred size for the button and add it to the panel
+        humanVsBlackAIButton.setPreferredSize(new Dimension(150, 50));
+        gbc.gridy = 3;
+        centeringPanel.add(humanVsBlackAIButton, gbc);
 
         //Add the centering panel to the frame
         launcherFrame.add(centeringPanel);
