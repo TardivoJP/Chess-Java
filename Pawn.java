@@ -116,6 +116,10 @@ public class Pawn extends Piece {
             if(toCol - fromCol == 0){
                 if(!pawn.isMoved()){
                     //Check if there's a piece in the way in double move
+                    if((side == 'W' && boardStateReference[fromRow - 1][toCol].getPiece() != null) || (side == 'B' && boardStateReference[fromRow + 1][toCol].getPiece() != null)){
+                        return false;
+                    }
+
                     if(boardStateReference[toRow][toCol].getPiece() == null){
                         pawn.setMoved(true);
                         pawn.setDoubleMoveLastTurn(true);
